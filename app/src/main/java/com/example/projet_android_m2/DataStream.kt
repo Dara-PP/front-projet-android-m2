@@ -2,13 +2,23 @@ package com.example.projet_android_m2
 
 import android.content.Context
 import android.os.Bundle
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.OnPlacedModifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
@@ -32,8 +42,9 @@ data class Payload(
 )
 @Serializable
 data class Name(
-    val en : String,
-    val fr : String
+    // si valeur manquante on met null
+    val en : String?= "Null",
+    val fr : String?= "Null"
 )
 
 @Serializable
@@ -77,49 +88,70 @@ object EitherSerializer : KSerializer<Either> {
     }
 }
 
-fun JsonRead(context: Context): String {
+fun JsonRead(context: Context, numeroPage: Int, taillePage: Int = 10): List<String> {
     // check securite bug
         val json = Json { ignoreUnknownKeys = true }
+        val outputRes = mutableListOf<String>()
+        val debut = numeroPage * taillePage
+        val fin = debut + taillePage
+
         return try {
             // ouvre le fichier Json
             val jsonFile = context.assets.open("people-places.jsonl")
             val bufferReader = BufferedReader(InputStreamReader(jsonFile))
 
-            val line = bufferReader.readLine()
-            var outputRes = ""
+            var indexLigne = 0
+            // linesequence important pour parcourir le fichier sans charger les 900mo d'un coup !
+            for (line in bufferReader.lineSequence()){
+                if (indexLigne >= debut && indexLigne < fin) {
+                    // Convertie la ligne en JsonElement
+                    val elementJson = json.parseToJsonElement(line)
 
-            if (line != null) {
-                // Convertie la ligne en JsonElement
-                val elementJson = json.parseToJsonElement(line)
-
-                // verifie si erreur dans le payload
-                val resultat: Either
-                val erreur = elementJson.jsonObject["error"]?.jsonPrimitive?.content
-                if (erreur != null) {
-                    resultat = Either.Left(erreur)
-                } else {
-                    resultat =
-                        Either.Right(json.decodeFromJsonElement(Payload.serializer(), elementJson))
+                    // verifie si erreur dans le payload
+                    val resultat: Either
+                    val erreur = elementJson.jsonObject["error"]?.jsonPrimitive?.content
+                    if (erreur != null) {
+                        resultat = Either.Left(erreur)
+                    } else {
+                        resultat =
+                            Either.Right(json.decodeFromJsonElement(Payload.serializer(), elementJson))
+                    }
+                    outputRes.add(resultat.toString())
                 }
-                outputRes = resultat.toString()
-                println("Résultat : $resultat")
-            } else {
-                outputRes = "Fichier vide ou probleme"
+                if (indexLigne >= fin-1) {
+                    break
+                }
+                indexLigne++
             }
             bufferReader.close()
             outputRes
         } catch (e: Exception){
-            "Erreur: ${e.message}"
-        } as String
+            listOf("Erreur: ${e.message}")
+        }
 }
 
 @Composable
 @Preview(showBackground = true)
 fun JsonDeroulo(modifier: Modifier = Modifier){
     val context = LocalContext.current
-    val resultat = JsonRead(context)
-    Text(
-        text = "Contenu du JSONL : \n $resultat",
-        modifier = modifier
-    )
+    var listJson by remember { mutableStateOf(listOf("Chargement...")) }
+    // Coroutine simple ici pour pas bloquer le chargement du json
+    LaunchedEffect(Unit) {
+        val resultat = JsonRead(
+            context = context,
+            numeroPage = 0,
+            taillePage = 4 // test sur 4
+        )
+        listJson = resultat
+    }
+
+    Column(modifier = modifier) {
+        Text(
+            text = "Contenu du JSONL :",
+            modifier = modifier
+        )
+        listJson.forEach { item ->
+            Text(text = item, modifier = Modifier.padding(4.dp))
+        }
+    }
 }
