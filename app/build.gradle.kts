@@ -1,5 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 val ktor_version: String by project
+val nav_version: String by project
 
 plugins {
     alias(libs.plugins.android.application)
@@ -61,6 +62,7 @@ dependencies {
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.compose.runtime)
+    implementation(libs.androidx.navigation.compose)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -77,4 +79,5 @@ dependencies {
     implementation("io.ktor:ktor-client-auth:${ktor_version}")
     implementation("io.ktor:ktor-client-content-negotiation:${ktor_version}")
     implementation("io.ktor:ktor-serialization-kotlinx-json:${ktor_version}")
+    implementation("androidx.navigation:navigation-compose:${nav_version}")
 }

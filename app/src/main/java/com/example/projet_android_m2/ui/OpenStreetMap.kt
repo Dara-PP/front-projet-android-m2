@@ -1,4 +1,4 @@
-package com.example.projet_android_m2
+package com.example.projet_android_m2.ui
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable

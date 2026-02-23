@@ -1,4 +1,4 @@
-package com.example.projet_android_m2.auth
+package com.example.projet_android_m2.ui.auth
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.Column
@@ -19,13 +19,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.projet_android_m2.KtorServer
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
+import com.example.projet_android_m2.data.KtorServer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-fun LoginPage() {
+fun LoginPage(navController: NavController) {
     var idInput by remember { mutableStateOf("") }
     var passwordInput by remember { mutableStateOf("") }
 
@@ -56,10 +58,14 @@ fun LoginPage() {
             onClick = {
                 scope.launch {
                     val server = KtorServer()
-                    val loginTest = server.login(idInput, passwordInput)
+                    val token = server.login(context, idInput, passwordInput)
                     // Switch sur le thread main pour le toast
                     withContext(Dispatchers.Main) {
-                        if (loginTest) {
+                        if (token != null) {
+                            navController.navigate("home"){
+                                // pour eviter les missclick bouton retour sur la login page alors que deja login
+                                popUpTo ("login" ){inclusive = true }
+                            }
                             Toast.makeText(context, "Bon Login", Toast.LENGTH_SHORT).show()
                         } else {
                             Toast.makeText(context, "Mauvais login", Toast.LENGTH_SHORT).show()
@@ -74,5 +80,5 @@ fun LoginPage() {
 @Preview(showBackground = true)
 @Composable
 fun TestLoginPage(){
-    LoginPage()
+    LoginPage(navController = rememberNavController())
 }
