@@ -3,45 +3,41 @@ package com.example.projet_android_m2
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.example.projet_android_m2.ui.theme.Projetandroidm2Theme
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.example.projet_android_m2.ui.auth.LoginPage
+import com.example.projet_android_m2.data.KtorServer
+import com.example.projet_android_m2.ui.HomePage
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        // instanciation du serveur
+        val server = KtorServer()
         setContent {
-            Projetandroidm2Theme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+            val navController = rememberNavController()
+            val context = LocalContext.current
+            val token = server.getToken(context)
+            // check si utilisateur login ou pas
+            var page = if (token != null) "home" else "login"
+
+            NavHost(
+                navController = navController,
+                startDestination = page,
+                modifier = Modifier.padding(10.dp)
+            ){
+                composable("home"){
+                    HomePage(navController = navController)
+                }
+                composable ("login" ){
+                    LoginPage(navController = navController)
                 }
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    Projetandroidm2Theme {
-        Greeting("Android")
     }
 }
