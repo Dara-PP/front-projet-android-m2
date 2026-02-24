@@ -20,7 +20,11 @@ data class AuthLoginUser(
     val id :Int,
     val password: String
 )
-
+@Serializable
+data class RegisterUser(
+    val username : String,
+    val password: String
+)
 @Serializable
 data class AuthResponse(
     val token : String,
@@ -47,7 +51,8 @@ class KtorServer {
             if(response.status.value == 200){
                 val userData = response.body<AuthResponse>()
                 val token = userData.token
-                savToken(context, token)
+                // backend à changer pour le login !
+                savToken(context, token, id) // temporaire
                 println(token)
                 token
             }else{
@@ -59,11 +64,33 @@ class KtorServer {
         }
     }
 
-    fun savToken(context : Context, token: String){
+    suspend fun register(context : Context, username: String, mdp: String ): String?{
+        return try {
+            val response: HttpResponse = client.post("$urlServer/register"){
+                contentType(ContentType.Application.Json)
+                setBody(RegisterUser(username = username, password = mdp))
+            }
+            // Donne un token maintenant
+            if(response.status.value == 200){
+                val userData = response.body<AuthResponse>()
+                val token = userData.token
+                savToken(context, token, username)
+                println("Token apres register : $token")
+                token
+            }else{
+                null
+            }
+        } catch (e: Exception){
+            println(e.message)
+            null
+        }
+    }
+    fun savToken(context : Context, token: String, username: String){
         // Cree le fichier global AuthLog pour toutes les activity et écran, "persistant" tant que pas de logout
         val sharedPref = context.getSharedPreferences("AuthLog",Context.MODE_PRIVATE) ?: return
         with (sharedPref.edit()) {
             putString("AUTH_TOKEN", token)
+            putString("USERNAME", username)
             apply()
         }
     }
@@ -71,6 +98,11 @@ class KtorServer {
     fun getToken(context : Context): String?{
         val sharedPref = context.getSharedPreferences("AuthLog",Context.MODE_PRIVATE)
         return sharedPref.getString("AUTH_TOKEN", null)
+    }
+
+    fun getUsername(context : Context): String?{
+        val sharedPref = context.getSharedPreferences("AuthLog",Context.MODE_PRIVATE)
+        return sharedPref.getString("USERNAME", null)
     }
 
     fun logout(context: Context){
