@@ -14,6 +14,8 @@ import io.ktor.http.contentType
 import kotlinx.serialization.Serializable
 import io.ktor.client.plugins.auth.*
 import io.ktor.client.plugins.auth.providers.bearer
+import io.ktor.client.request.get
+import io.ktor.client.request.header
 
 @Serializable
 data class AuthLoginUser(
@@ -77,6 +79,27 @@ class KtorServer {
                 savToken(context, token, username)
                 println("Token apres register : $token")
                 token
+            }else{
+                null
+            }
+        } catch (e: Exception){
+            println(e.message)
+            null
+        }
+    }
+
+    // Get les informations de l'utilisateur // temporaire !!
+    suspend fun me(context : Context): String?{
+        return try {
+            val token = getToken(context)
+            val response: HttpResponse = client.get("$urlServer/me"){
+                header("Authorization", "Bearer $token")
+            }
+            // Donne un token maintenant
+            if(response.status.value == 200){
+                val body = response.body<String>()
+                println(body)
+                body
             }else{
                 null
             }
