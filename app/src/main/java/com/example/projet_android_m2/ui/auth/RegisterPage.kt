@@ -27,28 +27,27 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-fun LoginPage(navController: NavController) {
+fun RegisterPage(navController: NavController) {
+    val scope = rememberCoroutineScope()
     var idInput by remember { mutableStateOf("") }
     var passwordInput by remember { mutableStateOf("") }
-
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
 
     Column(modifier = Modifier.fillMaxSize()) {
-        Text(text = "Login Page")
+        Text(text = "Création de compte")
         Spacer(modifier = Modifier.height(7.dp))
         OutlinedTextField(
             value = idInput,
-            onValueChange = {idInput = it},
-            label = {Text("id user")},
+            onValueChange = { idInput = it },
+            label = { Text("username") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
         Spacer(modifier = Modifier.height(7.dp))
         OutlinedTextField(
             value = passwordInput,
-            onValueChange = {passwordInput = it},
-            label = {Text("password")},
+            onValueChange = { passwordInput = it },
+            label = { Text("password") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
@@ -58,7 +57,7 @@ fun LoginPage(navController: NavController) {
             onClick = {
                 scope.launch {
                     val server = KtorServer()
-                    val token = server.login(context, idInput, passwordInput)
+                    val token = server.register(context, idInput, passwordInput)
                     // Switch sur le thread main pour le toast
                     withContext(Dispatchers.Main) {
                         if (token != null) {
@@ -66,24 +65,29 @@ fun LoginPage(navController: NavController) {
                                 // pour eviter les missclick bouton retour sur la login page alors que deja login
                                 popUpTo ("login" ){inclusive = true }
                             }
-                            Toast.makeText(context, "Bon Login", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Compte crée avec succes bienvenue", Toast.LENGTH_SHORT).show()
                         } else {
-                            Toast.makeText(context, "Mauvais login", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Erreur création de compte", Toast.LENGTH_SHORT).show()
                         }
                     }
                 }
             }
-        ) {Text(text = "Se connecter")}
+        ) {Text(text = "Creer un compte")}
         Spacer(modifier = Modifier.height(7.dp))
-        Text(text = "Pas de compte ?")
-        Button(onClick = {
-            navController.navigate("register")
-        }) {Text(text = "Créer un compte")}
+        Text(text = "Déjà un compte ?")
+        // Si deja un compte pour se connecter (retour login page)
+        Button(
+            onClick = {
+                navController.navigate("login") {
+                    popUpTo("register") { inclusive = true }
+                }
+            }
+        ) { Text(text = "Se connecter") }
     }
 }
 
 @Preview(showBackground = true)
 @Composable
-fun TestLoginPage(){
-    LoginPage(navController = rememberNavController())
+fun TestRegisterPage(){
+    RegisterPage(navController = rememberNavController())
 }

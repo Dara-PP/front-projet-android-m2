@@ -18,8 +18,10 @@ fun HomePage(navController: NavController) {
     val context = LocalContext.current
     // Remember le server afin de le garder en mémoire et éviter de le recréer à chaque fois
     val server = remember{ KtorServer() }
+    val username = server.getUsername(context)
     Column(modifier = Modifier.fillMaxSize()) {
-        Text("Home Page")
+        //Affiche id quand login et username quand via register backend a changer
+        Text("Bonjour $username")
         Button(onClick = {
             // appelle la fonction logout
             server.logout(context)
