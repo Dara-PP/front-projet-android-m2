@@ -13,6 +13,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.projet_android_m2.ui.auth.LoginPage
 import com.example.projet_android_m2.data.KtorServer
 import com.example.projet_android_m2.ui.HomePage
+import com.example.projet_android_m2.ui.NavigationBarUI
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,7 +33,8 @@ class MainActivity : ComponentActivity() {
                 modifier = Modifier.padding(10.dp)
             ){
                 composable("home"){
-                    HomePage(navController = navController)
+                    //La bar de navifation a scaffold donc il gere lui meme ca place
+                    NavigationBarUI(navController = navController)
                 }
                 composable ("login" ){
                     LoginPage(navController = navController)
