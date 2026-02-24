@@ -74,7 +74,7 @@ class KtorServer {
     }
 
     fun logout(context: Context){
-        client.clearAuthTokens()
+        //client.clearAuthTokens() // check si c'est ok
         val sharedPref = context.getSharedPreferences("AuthLog",Context.MODE_PRIVATE)
         sharedPref.edit().clear().apply()
     }
