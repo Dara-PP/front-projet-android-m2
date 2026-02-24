@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -35,6 +36,8 @@ fun NavigationBarUI(navController: NavController) {
         NavItem("Home", Icons.Default.Home),
         NavItem("Map", Icons.Default.LocationOn),
         NavItem("Carte", Icons.Default.Favorite),
+        NavItem("Profil", Icons.Default.Person),
+
         )
     // Garde en memoire la valeur de l'onglet actuelle, 0 par defaut "home"
     var selectedDestination by remember { mutableStateOf(0) }
@@ -73,6 +76,7 @@ fun ContentScreen(modifier: Modifier = Modifier,
         0->HomePage(navController = navController)
         1->OpenStreetMap()
         2->JsonDeroulo() // Peut etre revoir la logique ici apres pour la carte
+        3->ProfilPage(navController = navController)
     }
 }
 
