@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.projet_android_m2.PlaceDatabase
 import com.example.projet_android_m2.PlacePersonality
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -83,8 +84,7 @@ class PlaceRepository(val context : Context) {
         //Avec Room
         println("NEW DB INIT")
         status("Base vide")
-        jsonInsertRoom(status = status)
-        return@withContext getData()
+        return@withContext emptyList()
     }
 
     suspend fun getData(limit: Int = 10): List<CarteInfos> = withContext(Dispatchers.IO) {
@@ -98,6 +98,103 @@ class PlaceRepository(val context : Context) {
                 lat = place.locationLat,
                 lon = place.locationLon
             )
+        }
+    }
+    // Amélioration script ajout dans la Room par chunk perf correct mais assez long encore...
+    // TODO:  () Améliorer le script
+    suspend fun jsonInsertRoomChunk(chunkSize: Int = 1000, status:(current : Int, total : Int, message : String) -> Unit): Result<String> = withContext(Dispatchers.IO) {
+        val count = countDao()
+        if (count > 0) {
+            println("DEJA REMPLIS")
+            status(100,100, "Base déjà chargé $count entrées")
+            return@withContext Result.success("Base déjà chargé $count entrées")
+        }
+        val outputRes = mutableListOf<String>()
+        val infoInsert = mutableListOf<PlacePersonality>()
+        try {
+            var indexLigne = 0
+            var totalInsert = 0
+            var errorCount = 0
+            var processLines = 0
+            val jsonFile1 = context.assets.open("people-places.jsonl")
+            // ouvre le fichier Json
+            val bufferReaderBig1 = BufferedReader(InputStreamReader(jsonFile1))
+            val totalLines = bufferReaderBig1.useLines{it.count()}
+            bufferReaderBig1.close()
+
+            status(0,100,"La machine s'active, total de ligne $totalLines!")
+            delay(500)
+            val jsonFile2 = context.assets.open("people-places.jsonl")
+            val bufferReaderBig2 = BufferedReader(InputStreamReader(jsonFile2))
+            status(0,100, "Démarrage du chargement...")
+
+            // linesequence important pour parcourir le fichier sans charger les 900mo d'un coup !
+            for (line in bufferReaderBig2.lineSequence()) {
+                //if (indexLigne >= chunkSize) break
+
+                // Convertie la ligne en JsonElement
+                val elementJson = json.parseToJsonElement(line)
+
+                // verifie si erreur dans le payload
+                val erreur = elementJson.jsonObject["error"]?.jsonPrimitive?.content
+                if (erreur == null) {
+                    val payload = json.decodeFromJsonElement(Payload.serializer(), elementJson)
+                    val placePerson = payload.places.map { place ->
+                        PlacePersonality(
+                            personId = payload.id,
+                            personNameEn = payload.name.en,
+                            personNameFr = payload.name.fr,
+                            nameEn = place.name.en,
+                            nameFr = place.name.fr,
+                            relationId = null,
+                            relationNameEn = null,
+                            relationNameFr = null,
+                            locationLat = place.location.getOrNull(0) ?: 0.0,
+                            locationLon = place.location.getOrNull(1) ?: 0.0,
+                            zone = place.zone,
+                            id = place.id
+                        )
+                    }
+                    infoInsert.addAll(placePerson)
+                    outputRes.add("Personne ID ${payload.id} avec $placePerson lieux")
+                }else{
+                    errorCount++
+                }
+                indexLigne++
+                processLines++
+
+                if(infoInsert.size >= chunkSize){
+                    insertDao(infoInsert)
+                    totalInsert += infoInsert.size
+                    infoInsert.clear()
+                    val progressPercent = (processLines*100) / totalLines
+                    status(progressPercent,
+                        100,
+                        "Chargement $progressPercent%\n $totalInsert lieux chargés $progressPercent/$totalLines lignes"
+                    )
+                        delay(42)
+                }
+            }
+
+            bufferReaderBig2.close()
+            // Insert dans le ROOM
+            if (infoInsert.isNotEmpty()) {
+                insertDao(infoInsert)
+                totalInsert += infoInsert.size
+                infoInsert.clear()
+
+                status(100, 100, "Terminé: $totalInsert lieux\n $indexLigne personnalités, \n $errorCount erreurs")
+                delay(1000)
+            } else {
+                status(0,0,"Aucun lieu valide pour insertion")
+                outputRes.add(0, "Aucun lieu valide pour insertion")
+            }
+            kotlinx.coroutines.delay(1000)
+            Result.success("Chargés: $totalInsert lieux\n $indexLigne personnalités, \n $errorCount erreurs")
+
+        } catch (e: Exception) {
+            status(0,100,"Erreur json -> room${e.localizedMessage}")
+            Result.failure(e)
         }
     }
     // Lecture Json et input dans Room Dao, test simple pour l'instant avec limit
