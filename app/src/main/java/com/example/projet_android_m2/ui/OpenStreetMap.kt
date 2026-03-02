@@ -1,5 +1,6 @@
 package com.example.projet_android_m2.ui
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -15,13 +16,18 @@ import androidx.compose.ui.unit.dp
 import com.example.projet_android_m2.PlacePersonality
 import com.example.projet_android_m2.data.PlaceRepository
 import kotlinx.coroutines.flow.first
+import org.maplibre.compose.camera.rememberCameraState
 import org.maplibre.compose.expressions.dsl.const
 import org.maplibre.compose.layers.CircleLayer
+import org.maplibre.compose.location.LocationPuck
+import org.maplibre.compose.location.rememberDefaultLocationProvider
+import org.maplibre.compose.location.rememberUserLocationState
 import org.maplibre.compose.map.MaplibreMap
 import org.maplibre.compose.sources.GeoJsonData
 import org.maplibre.compose.sources.rememberGeoJsonSource
 import org.maplibre.compose.style.BaseStyle
 
+@SuppressLint("RememberReturnType")
 @Composable
 fun OpenStreetMap (){
     val context = LocalContext.current
@@ -56,9 +62,15 @@ fun OpenStreetMap (){
         """.trimIndent()
     }
 
+    // Localisation
+    val local = rememberDefaultLocationProvider()
+    val locationState = rememberUserLocationState(local)
+    val cameraState = rememberCameraState()
+
     MaplibreMap(
         modifier = Modifier.fillMaxSize(),
-        baseStyle = BaseStyle.Uri("https://tiles.openfreemap.org/styles/liberty")
+        baseStyle = BaseStyle.Uri("https://tiles.openfreemap.org/styles/liberty"),
+        cameraState = cameraState
     ){
         // Transformation du json en source pour maplibre
         val source1 = rememberGeoJsonSource(
@@ -70,6 +82,17 @@ fun OpenStreetMap (){
             radius = const(7.dp),
             color = const(Color.Red)
         )
+        // crach sur emulateur si pas de position set !!
+        if (locationState.location != null){
+            LocationPuck(
+                idPrefix = "user",
+                locationState = locationState,
+                cameraState = cameraState
+            )
+        }
+        else{
+            println("Pas de signal GPS ou indisponible")
+        }
     }
 }
 
