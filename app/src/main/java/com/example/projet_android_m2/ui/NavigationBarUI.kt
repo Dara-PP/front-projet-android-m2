@@ -2,6 +2,7 @@ package com.example.projet_android_m2.ui
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationOn
@@ -21,6 +22,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.example.projet_android_m2.ui.ApplicationsScreen
 
 // Dataclasse de NavItem
 data class NavItem(
@@ -33,6 +35,7 @@ fun NavigationBarUI(navController: NavController) {
     // Définitions de la liste des onglets
     val navItemList = listOf(
         NavItem("Home", Icons.Default.Home),
+        NavItem("Apps", Icons.Default.Face),
         NavItem("Map", Icons.Default.LocationOn),
         NavItem("Carte", Icons.Default.Favorite),
         NavItem("Profil", Icons.Default.Person),
@@ -72,10 +75,15 @@ fun ContentScreen(modifier: Modifier = Modifier,
                   selectedDestination: Int,
                   navController: NavController){
     when(selectedDestination){
-        0->HomePage(navController = navController)
-        1->OpenStreetMap()
-        2->JsonDeroulo() // Peut etre revoir la logique ici apres pour la carte
-        3->ProfilPage(navController = navController)
+        0 -> HomePage(navController = navController)
+        1 -> ApplicationsScreen(
+            onAppClick = {
+                navController.navigate("david_game")
+            }
+        )
+        2 -> OpenStreetMap()
+        3 -> JsonDeroulo()
+        4 -> ProfilPage(navController = navController)
     }
 }
 
