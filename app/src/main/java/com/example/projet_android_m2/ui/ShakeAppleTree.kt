@@ -75,7 +75,7 @@ fun ShakeTreeGame(
                 timeRemaining--
             }
             isGameActive = false
-            onGameFinished(score)
+            //onGameFinished(score)
         }
     }
 
@@ -97,7 +97,6 @@ fun ShakeTreeGame(
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
-        // Affichage des informations
         Text(text = "Score : $score 🍎", fontSize = 32.sp, fontWeight = FontWeight.Bold)
         Text(text = "Temps : ${timeRemaining}s", fontSize = 24.sp, color = if (timeRemaining < 3) androidx.compose.ui.graphics.Color.Red else androidx.compose.ui.graphics.Color.Black)
 
@@ -108,12 +107,27 @@ fun ShakeTreeGame(
             Button(onClick = { isGameActive = true }) {
                 Text("DÉMARRER")
             }
-        } else if (!isGameActive && timeRemaining == 0) {
+        }
+        else if (!isGameActive && timeRemaining == 0) {
             Text(text = "PARTIE TERMINÉE !", fontSize = 20.sp, color = androidx.compose.ui.graphics.Color.Blue, fontWeight = FontWeight.Bold)
-            Button(onClick = { isGameActive = true }, modifier = Modifier.padding(top=16.dp)) {
-                Text("REJOUER")
+            Row(
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
+            ) {
+                Button(onClick = {
+                    isGameActive = true
+                }) {
+                    Text("REJOUER")
+                }
+
+                Button(onClick = {
+                    onGameFinished(score)
+                }) {
+                    Text("QUITTER")
+                }
             }
-        } else {
+        }
+        else {
             Text(text = "👉 SECOUE TON TÉLÉPHONE ! 👈", fontSize = 18.sp)
         }
     }

@@ -32,7 +32,6 @@ data class NavItem(
 
 @Composable
 fun NavigationBarUI(navController: NavController) {
-    // Définitions de la liste des onglets
     val navItemList = listOf(
         NavItem("Home", Icons.Default.Home),
         NavItem("Apps", Icons.Default.Face),
