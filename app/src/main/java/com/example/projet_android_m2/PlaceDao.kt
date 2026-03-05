@@ -26,4 +26,17 @@ interface PlaceDao {
 
     @Query("DELETE FROM places")
     suspend fun clearAll()
+
+    //Retourne les lieux dans |=| box autour de l'user.
+    @Query("""
+        SELECT * FROM places
+        WHERE locationLat BETWEEN :minLat AND :maxLat
+          AND locationLon BETWEEN :minLon AND :maxLon
+    """)
+    suspend fun getPlacesAround(
+        minLat: Double,
+        maxLat: Double,
+        minLon: Double,
+        maxLon: Double
+    ): List<PlacePersonality>
 }

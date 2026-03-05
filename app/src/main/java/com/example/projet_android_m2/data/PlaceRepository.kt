@@ -298,4 +298,21 @@ class PlaceRepository(val context : Context) {
             listOf("Erreur: ${e.message}")
         }
     }
+    suspend fun getPlacesAroundGps(
+        centerLat: Double,
+        centerLon: Double,
+        radiusKm: Double = 2.0
+    ): List<PlacePersonality> = withContext(Dispatchers.IO) {
+
+        // Approx 1 degré de latitude radius selon terre
+        val deltaLat = radiusKm / 111.0
+        val deltaLon = radiusKm / 111.0
+
+        dao.getPlacesAround(
+            minLat = centerLat - deltaLat,
+            maxLat = centerLat + deltaLat,
+            minLon = centerLon - deltaLon,
+            maxLon = centerLon + deltaLon
+        )
+    }
 }
