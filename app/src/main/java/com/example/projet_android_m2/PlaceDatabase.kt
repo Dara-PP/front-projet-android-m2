@@ -6,13 +6,14 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [PlacePersonality::class],
-    version = 1 // Migration pour base de donnée
+    entities = [PlacePersonality::class, PlaceCard::class],
+    version = 2 // Migration pour base de donnée
 )
 // Prompt Claude Sonnet 4.6 : Donne moi le code pour initier une base de données Room en kotlin en te basant sur mes fichier fichier PlacePersonalitly.kt et PlaceDao.kt,
 // car celle de la documentation ne marche pas dans mon cas "https://developer.android.com/training/data-storage/room?hl=fr"
 abstract class PlaceDatabase: RoomDatabase() {
     abstract fun placeDao(): PlaceDao
+    abstract fun placeCardDao(): PlaceCardDao
 
     companion object {
         @Volatile private var INSTANCE: PlaceDatabase? = null
