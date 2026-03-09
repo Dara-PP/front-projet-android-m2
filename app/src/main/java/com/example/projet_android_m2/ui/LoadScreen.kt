@@ -42,6 +42,12 @@ fun LoadScreen(onLoadComplete: () -> Unit, modifier: Modifier = Modifier) {
             statusMessage = "Base de donnée déja chargé \n $count lieux dispnibles"
             progress = 100
             isLoading = false
+            val cardsCount = repo.countCardsDao()
+            println("Cards générées : $cardsCount")
+            if (cardsCount == 0L) {
+                statusMessage = "Génération des cartes en cours..."
+                repo.generatePlaceCards()
+            }
             delay(2000)
             onLoadComplete()
         } else {
@@ -56,6 +62,7 @@ fun LoadScreen(onLoadComplete: () -> Unit, modifier: Modifier = Modifier) {
                 isLoading = false
                 statusMessage = resultMessage
                 delay(1500) // Pour voir le message sinon trop rapide
+                repo.generatePlaceCards()
                 onLoadComplete()
             }.onFailure { error ->
                 isLoading = false
@@ -105,6 +112,7 @@ fun LoadScreen(onLoadComplete: () -> Unit, modifier: Modifier = Modifier) {
                             }
                             ).onSuccess {
                                 isLoading = false
+                                repo.generatePlaceCards()
                                 kotlinx.coroutines.delay(1500)
                                 onLoadComplete()
                             }.onFailure { error ->
