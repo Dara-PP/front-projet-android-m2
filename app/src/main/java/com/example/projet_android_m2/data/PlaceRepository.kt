@@ -1,6 +1,7 @@
 package com.example.projet_android_m2.data
 
 import android.content.Context
+import com.example.projet_android_m2.PlaceCard
 import com.example.projet_android_m2.PlaceDatabase
 import com.example.projet_android_m2.PlacePersonality
 import kotlinx.coroutines.Dispatchers
@@ -15,6 +16,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import kotlin.collections.mutableListOf
+import kotlin.random.Random
 
 @Serializable
 data class Payload(
@@ -52,6 +54,7 @@ sealed class Either {
 
 class PlaceRepository(val context : Context) {
     val dao = PlaceDatabase.getInstance(context).placeDao()
+    val placeCardDao = PlaceDatabase.getInstance(context).placeCardDao()
 
     // check securite bug
     val json = Json { ignoreUnknownKeys = true }
@@ -59,6 +62,7 @@ class PlaceRepository(val context : Context) {
     suspend fun clearDao() {
         println("CLEAR DB")
         dao.clearAll()
+        placeCardDao.clearAll()
     }
     suspend fun insertDao(places: List<PlacePersonality>) {
         dao.insertAll(places)
@@ -67,11 +71,117 @@ class PlaceRepository(val context : Context) {
         println("COUNT")
         return dao.count()
     }
+    suspend fun countCardsDao(): Long {
+        return placeCardDao.count()
+    }
     suspend fun getPerson(offset: Int, size : Int): Flow<List<PlacePersonality>> {
         return dao.getPerson(offset, size)
     }
+    //TODO: Relation avec le backend pas full local
+    suspend fun generatePlaceCards(
+        pageSize: Int = 2000,
+        status: (progress: Int, message: String) -> Unit = { _, _ -> }
+    ): Result<String> = withContext(Dispatchers.IO) {
 
-    // Check si la base à déja les data. Context(dispatcher.io) pour pas bloquer ui
+        val existing = placeCardDao.count()
+        val totalPlaces = countDao()
+        if (existing >= totalPlaces && existing > 0) {
+            status(100, "Cartes déjà générées ($existing cartes)")
+            return@withContext Result.success("Cartes déjà générées ($existing cartes)")
+        }
+
+        return@withContext try {
+            val total = countDao()
+            println("DEBUG total places: $total")
+            var offset = 0
+            var totalGenerated = 0
+
+            status(0, "Génération des cartes... (total lieux : $total)")
+
+            while (true) {
+                val page = dao.getPerson(offset, pageSize).first()
+                println("DEBUG $offset: ${page.size}")
+                if (page.isEmpty()) break
+
+                println("DEBUG avant map")
+                val cards = try {
+                    page.map { place ->
+                        // Rayon max : 20km zone, 500m lieu précis
+                        val maxDelta = if (place.zone) 20.0 / 111.0 else 0.0045
+                        // Rayon min : évite que la carte soit collée au point d'origine
+                        val minDelta = if (place.zone) 2.0 / 111.0 else 0.0009 // 2km min / 100m min
+                        // angle aléatoire + distance dans [min, max]
+                        val angle = Random.nextDouble(0.0, 2 * Math.PI)
+                        val distance = Random.nextDouble(minDelta, maxDelta)
+                        val randomLat = place.locationLat + distance * kotlin.math.sin(angle)
+                        val randomLon = place.locationLon + distance * kotlin.math.cos(angle)
+                        PlaceCard(
+                            personId = place.personId,
+                            personNameFr = place.personNameFr,
+                            personNameEn = place.personNameEn,
+                            nameEn = place.nameEn,
+                            nameFr = place.nameFr,
+                            locationLat = place.locationLat,
+                            locationLon = place.locationLon,
+                            locationRandomLat = randomLat,
+                            locationRandomLon = randomLon,
+                            zone = place.zone,
+                            iscatch = false,
+                            id = place.id
+                        )
+                    }
+                } catch (e: Exception) {
+                    println("DEBUG CRASH dans le map : ${e::class.simpleName} - ${e.message}")
+                    e.printStackTrace()
+                    break
+                }
+                println("DEBUG après map, cards.size = ${cards.size}")
+
+                placeCardDao.insertAll(cards)
+                println("DEBUG  ${cards.size} total card: $totalGenerated")
+                val countAfter = placeCardDao.count()
+                println("DEBUG placeCardDao.count() : $countAfter")
+                totalGenerated += cards.size
+                offset += pageSize
+
+                val progress = ((totalGenerated.toFloat() / total) * 100).toInt().coerceIn(0, 99)
+                status(progress, "Cartes générées : $totalGenerated / $total")
+            }
+
+            status(100, "Génération terminée : $totalGenerated cartes")
+            Result.success("$totalGenerated cartes générées")
+
+        } catch (e: Exception) {
+            status(0, "Erreur génération cartes : ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    //Retourne les PlaceCards non attrapées dans un rayon autour du joueur.
+    suspend fun getPlaceCardsAroundGps(
+        centerLat: Double,
+        centerLon: Double,
+    ): List<PlaceCard> = withContext(Dispatchers.IO) {
+
+        val deltaZone = 20.0 / 111.0 // 20km
+        val deltaLieu = 0.5 / 111.0 // 500m
+
+        val zones = placeCardDao.getZoneCardsAround(
+            minLat = centerLat - deltaZone,
+            maxLat = centerLat + deltaZone,
+            minLon = centerLon - deltaZone,
+            maxLon = centerLon + deltaZone
+        )
+
+        val lieux = placeCardDao.getLieuCardsAround(
+            minLat = centerLat - deltaLieu,
+            maxLat = centerLat + deltaLieu,
+            minLon = centerLon - deltaLieu,
+            maxLon = centerLon + deltaLieu
+        )
+
+        zones + lieux
+    }
     suspend fun checkInit(status:(String) -> Unit): List<CarteInfos> = withContext(Dispatchers.IO) {
         val count = countDao()
         if (count > 0) {
@@ -79,9 +189,6 @@ class PlaceRepository(val context : Context) {
             status("Données recupérées de la base ROOM")
             return@withContext getData()
         }
-        //Sans Room test json seul
-        //JsonRead(0,4)
-        //Avec Room
         println("NEW DB INIT")
         status("Base vide")
         return@withContext emptyList()
@@ -102,6 +209,7 @@ class PlaceRepository(val context : Context) {
     }
     // Amélioration script ajout dans la Room par chunk perf correct mais assez long encore...
     // TODO:  () Améliorer le script
+    // TODO:  () Bug sur télephone quand trop de data !!!
     suspend fun jsonInsertRoomChunk(chunkSize: Int = 1000, status:(current : Int, total : Int, message : String) -> Unit): Result<String> = withContext(Dispatchers.IO) {
         val count = countDao()
         if (count > 0) {
