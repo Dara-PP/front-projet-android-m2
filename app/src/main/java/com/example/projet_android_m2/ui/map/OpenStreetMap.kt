@@ -21,6 +21,7 @@ import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -34,7 +35,9 @@ import androidx.compose.ui.unit.sp
 import com.example.projet_android_m2.PlaceCard
 import com.example.projet_android_m2.PlacePersonality
 import com.example.projet_android_m2.data.PlaceRepository
+import com.example.projet_android_m2.ui.game.ShakeTreeGame
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.launch
 import org.maplibre.spatialk.geojson.Position
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.rememberCameraState
@@ -58,6 +61,7 @@ import kotlin.math.sin
 fun OpenStreetMap (){
     val context = LocalContext.current
     val repo = remember { PlaceRepository(context) }
+    val scope = rememberCoroutineScope()
     var places by remember { mutableStateOf<List<PlacePersonality>>(emptyList()) }
     var cards by remember { mutableStateOf<List<PlaceCard>>(emptyList()) }
     // Point sélectionné au clic
@@ -81,6 +85,10 @@ fun OpenStreetMap (){
 
     // Etat sheet capture
     var showCapture by remember { mutableStateOf(false) }
+
+    // Etat de la carte & jeu
+    var cardToCapture by remember { mutableStateOf<PlaceCard?>(null) }
+    var currentGame by remember { mutableStateOf(MiniGame.SHAKE_TREE) }
 
     LaunchedEffect(Unit) {
         // test avec seulement 1000 pour l'instant !
@@ -194,11 +202,43 @@ fun OpenStreetMap (){
             cardsAround = cards,
             onDismiss = { showCapture = false },
             onCaptureClick = { card ->
-                // TODO : lancer ShakeTreeGame avec card.id
+                currentGame = pickRandomGame()
                 println("Capture lancée pour ${card.id}")
+                showCapture = false
+                cardToCapture = card
             }
         )
     }
+
+    // TODO rajouter les autres jeux
+    // Si cardToCapture != null --> on affiche un jeu random en plein écran
+    // On choisit le jeu au moment où la carte est sélectionnée en random
+        cardToCapture?.let { card ->
+            when (currentGame) {
+                MiniGame.SHAKE_TREE -> ShakeTreeGame(
+                    onGameFinished = { score ->
+                        scope.launch {
+                            println("Jeu SHAKE_TREE")
+                            // Score minimum requis pour attraper la carte
+                            if (score >= scoreMinimum(currentGame)) {
+                                repo.catchCard(card.id)
+                                // Rafraichit la liste des cartes sur la map
+                                cards = repo.getPlaceCardsAroundGps(userLat, userLon)
+                                countZones = cards.count { it.zone }
+                                countLieux = cards.count { !it.zone }
+                                println("Carte attraper${card.nameFr}")
+                            } else {
+                                println("Echec capture${card.nameFr}")
+                            }
+                        }
+                        cardToCapture = null
+                        // TODO backend : repo.postCatchToServer(card.id, userId, score)
+                    }
+                )
+                // MiniGame.AUTRE_JEU -> AutreJeu(onGameFinished = { score -> ... })
+            }
+            return
+        }
     Box(modifier = Modifier.fillMaxSize()) {
         MaplibreMap(
             modifier = Modifier.fillMaxSize(),
@@ -293,8 +333,35 @@ fun OpenStreetMap (){
         ) {
             Text("Capturer", color = Color.White, fontSize = 16.sp)
         }
+
+        // Bouton reset debug etat carte
+        Button(
+            modifier = Modifier.align(Alignment.BottomStart).padding(bottom = 80.dp),
+            onClick = {
+                scope.launch {
+                    repo.resetAllCatch()
+                    cards = repo.getPlaceCardsAroundGps(userLat, userLon)
+                    countZones = cards.count { it.zone }
+                    countLieux = cards.count { !it.zone }
+                }
+            },
+        ) {
+            Text("Reset", color = Color.White)
+        }
     }
 }
+
+// Liste des jeux disponibles
+enum class MiniGame { SHAKE_TREE /*,Jsonderoulo*/ }
+
+// Score minimum pour gagner la carte selon le jeu
+fun scoreMinimum(game: MiniGame): Int = when (game) {
+    MiniGame.SHAKE_TREE -> 0
+    // TODO RAJOUTER les autres jeux apres
+}
+
+// Sélection aléatoire parmi les jeux dispo
+fun pickRandomGame(): MiniGame = MiniGame.entries.random()
 // Stats lieux & zone
 @Composable
 fun StatsOverlay(
