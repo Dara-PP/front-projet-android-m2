@@ -76,7 +76,7 @@ fun ShakeTreeGame(
                 timeRemaining--
             }
             isGameActive = false
-            //onGameFinished(score)
+            onGameFinished(score)
         }
     }
 

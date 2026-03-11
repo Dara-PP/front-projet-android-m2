@@ -77,6 +77,16 @@ class PlaceRepository(val context : Context) {
     suspend fun getPerson(offset: Int, size : Int): Flow<List<PlacePersonality>> {
         return dao.getPerson(offset, size)
     }
+
+    //TODO backend ktorserver ajouter un POST /catch (cardId, userId, score)...
+    suspend fun catchCard(cardId: Long) = withContext(Dispatchers.IO) {
+        placeCardDao.catchCard(cardId)
+        println("Carte $cardId attrapée !")
+    }
+    suspend fun resetAllCatch() = withContext(Dispatchers.IO) {
+        placeCardDao.resetAllCatch()
+        println("Etats des cartes remises à 0")
+    }
     //TODO: Relation avec le backend pas full local
     suspend fun generatePlaceCards(
         pageSize: Int = 2000,
