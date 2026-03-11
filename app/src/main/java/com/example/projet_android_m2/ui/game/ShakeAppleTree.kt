@@ -1,4 +1,4 @@
-package com.example.projet_android_m2.ui
+package com.example.projet_android_m2.ui.game
 
 import android.content.Context
 import android.hardware.Sensor
@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -98,7 +99,7 @@ fun ShakeTreeGame(
         )
 
         Text(text = "Score : $score 🍎", fontSize = 32.sp, fontWeight = FontWeight.Bold)
-        Text(text = "Temps : ${timeRemaining}s", fontSize = 24.sp, color = if (timeRemaining < 3) androidx.compose.ui.graphics.Color.Red else androidx.compose.ui.graphics.Color.Black)
+        Text(text = "Temps : ${timeRemaining}s", fontSize = 24.sp, color = if (timeRemaining < 3) Color.Red else Color.Black)
 
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -109,7 +110,7 @@ fun ShakeTreeGame(
             }
         }
         else if (!isGameActive && timeRemaining == 0) {
-            Text(text = "PARTIE TERMINÉE !", fontSize = 20.sp, color = androidx.compose.ui.graphics.Color.Blue, fontWeight = FontWeight.Bold)
+            Text(text = "PARTIE TERMINÉE !", fontSize = 20.sp, color = Color.Blue, fontWeight = FontWeight.Bold)
             Row(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
