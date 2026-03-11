@@ -1,4 +1,4 @@
-package com.example.projet_android_m2.ui
+package com.example.projet_android_m2.ui.map
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.background
@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
@@ -48,6 +49,8 @@ import org.maplibre.compose.sources.rememberGeoJsonSource
 import org.maplibre.compose.style.BaseStyle
 import org.maplibre.compose.util.ClickResult
 import org.maplibre.compose.layers.LineLayer
+import kotlin.math.cos
+import kotlin.math.sin
 
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("RememberReturnType")
@@ -76,7 +79,9 @@ fun OpenStreetMap (){
     var countZones by remember { mutableIntStateOf(0) }
     var countLieux by remember { mutableIntStateOf(0) }
 
-    // Get les points dans places avec call vers room via getPerson()
+    // Etat sheet capture
+    var showCapture by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
         // test avec seulement 1000 pour l'instant !
         // Lat - lon affichage test
@@ -109,8 +114,8 @@ fun OpenStreetMap (){
         val points = (0..360 step 10)
             .map { angle ->
                 val rad = Math.toRadians(angle.toDouble())
-                val pLat = userLat + (radiusKm / 111.0) * kotlin.math.sin(rad)
-                val pLon = userLon + (radiusKm / 111.0) * kotlin.math.cos(rad)
+                val pLat = userLat + (radiusKm / 111.0) * sin(rad)
+                val pLon = userLon + (radiusKm / 111.0) * cos(rad)
                 "[$pLon, $pLat]" // On crée d'abord une liste de strings
             }
             .joinToString(",") // On les assemble à la fin
@@ -180,6 +185,19 @@ fun OpenStreetMap (){
                 )
             }
         }
+    }
+    // Sheet liste cartes capturables
+    if (showCapture) {
+        CaptureBottom(
+            userLat = userLat,
+            userLon = userLon,
+            cardsAround = cards,
+            onDismiss = { showCapture = false },
+            onCaptureClick = { card ->
+                // TODO : lancer ShakeTreeGame avec card.id
+                println("Capture lancée pour ${card.id}")
+            }
+        )
     }
     Box(modifier = Modifier.fillMaxSize()) {
         MaplibreMap(
@@ -260,7 +278,7 @@ fun OpenStreetMap (){
                 println("Pas de signal GPS ou indisponible")
             }
         }
-    }
+
         // Overlay stats en haut de la map
         StatsOverlay(
             countZones = countZones,
@@ -268,7 +286,15 @@ fun OpenStreetMap (){
             modifier = Modifier.padding(top = 12.dp)
         )
 
+        // Bouton capture
+        Button(
+            onClick = { showCapture = true },
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 80.dp)
+        ) {
+            Text("Capturer", color = Color.White, fontSize = 16.sp)
+        }
     }
+}
 // Stats lieux & zone
 @Composable
 fun StatsOverlay(

@@ -22,7 +22,7 @@ import com.example.projet_android_m2.ui.auth.LoginPage
 import com.example.projet_android_m2.data.KtorServer
 import com.example.projet_android_m2.ui.LoadScreen
 import com.example.projet_android_m2.ui.NavigationBarUI
-import com.example.projet_android_m2.ui.ShakeTreeGame
+import com.example.projet_android_m2.ui.game.ShakeTreeGame
 import com.example.projet_android_m2.ui.auth.RegisterPage
 
 class MainActivity : ComponentActivity() {
