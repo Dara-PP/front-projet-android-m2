@@ -19,49 +19,54 @@ import io.ktor.client.request.header
 
 @Serializable
 data class AuthLoginUser(
-    val id :Int,
+    val username: String,
     val password: String
 )
+
 @Serializable
 data class RegisterUser(
     val username : String,
     val password: String
 )
+
 @Serializable
 data class AuthResponse(
     val token : String,
     val message : String
 )
+
 class KtorServer {
-    private val urlServer = "https://ktor-server-forandroidapp.onrender.com"
+    private val urlServer = "http://10.0.2.2:8080"
+    // private val urlServer = "https://ktor-server-forandroidapp.onrender.com"
+
     private val client = HttpClient(CIO) {
-            install(ContentNegotiation) {
-                json()
-            }
-            install(Auth){
-                bearer{}
-            }
+        install(ContentNegotiation) {
+            json()
         }
-    suspend fun login(context : Context, id: String, mdp: String ): String?{
+        install(Auth){
+            bearer{}
+        }
+    }
+
+    suspend fun login(context : Context, username: String, mdp: String ): String?{
         return try {
-            val idInt = id.toInt()
             val response: HttpResponse = client.post("$urlServer/auth"){
                 contentType(ContentType.Application.Json)
-                setBody(AuthLoginUser(id = idInt, password = mdp))
+                setBody(AuthLoginUser(username = username, password = mdp))
             }
-            // Donne un token maintenant
+
             if(response.status.value == 200){
                 val userData = response.body<AuthResponse>()
                 val token = userData.token
-                // backend à changer pour le login !
-                savToken(context, token, id) // temporaire
+                savToken(context, token, username)
                 println(token)
                 token
             }else{
+                println("Erreur HTTP: ${response.status}")
                 null
             }
         } catch (e: Exception){
-            println(e.message)
+            println("ERREUR D'ENVOI KTOR: ${e.message}")
             null
         }
     }
@@ -72,7 +77,6 @@ class KtorServer {
                 contentType(ContentType.Application.Json)
                 setBody(RegisterUser(username = username, password = mdp))
             }
-            // Donne un token maintenant
             if(response.status.value == 200){
                 val userData = response.body<AuthResponse>()
                 val token = userData.token
@@ -88,14 +92,12 @@ class KtorServer {
         }
     }
 
-    // Get les informations de l'utilisateur // temporaire !!
     suspend fun me(context : Context): String?{
         return try {
             val token = getToken(context)
             val response: HttpResponse = client.get("$urlServer/me"){
                 header("Authorization", "Bearer $token")
             }
-            // Donne un token maintenant
             if(response.status.value == 200){
                 val body = response.body<String>()
                 println(body)
@@ -108,8 +110,8 @@ class KtorServer {
             null
         }
     }
+
     fun savToken(context : Context, token: String, username: String){
-        // Cree le fichier global AuthLog pour toutes les activity et écran, "persistant" tant que pas de logout
         val sharedPref = context.getSharedPreferences("AuthLog",Context.MODE_PRIVATE) ?: return
         with (sharedPref.edit()) {
             putString("AUTH_TOKEN", token)
@@ -129,7 +131,6 @@ class KtorServer {
     }
 
     fun logout(context: Context){
-        //client.clearAuthTokens() // check si c'est ok
         val sharedPref = context.getSharedPreferences("AuthLog",Context.MODE_PRIVATE)
         sharedPref.edit().clear().apply()
     }
