@@ -24,6 +24,8 @@ import com.example.projet_android_m2.ui.LoadScreen
 import com.example.projet_android_m2.ui.NavigationBarUI
 import com.example.projet_android_m2.ui.game.ShakeTreeGame
 import com.example.projet_android_m2.ui.auth.RegisterPage
+import com.example.projet_android_m2.ui.minigames.BombDefuseMiniGame
+
 
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.N)
@@ -93,6 +95,18 @@ class MainActivity : ComponentActivity() {
                         ShakeTreeGame(
                             onGameFinished = { score ->
                                 println("Partie terminée avec un score de $score !")
+                                navController.popBackStack()
+                            }
+                        )
+                    }
+                    composable("Francois_game") {
+                        BombDefuseMiniGame(
+                            onSuccess = {
+                                println("Mini-jeu réussi")
+                                navController.popBackStack()
+                            },
+                            onFail = {
+                                println("Mini-jeu échoué")
                                 navController.popBackStack()
                             }
                         )

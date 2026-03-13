@@ -58,7 +58,7 @@ fun LoginPage(navController: NavController) {
             onClick = {
                 scope.launch {
                     val server = KtorServer()
-                    val token = server.login(context, idInput, passwordInput)
+                    val token = server.login(context, username = idInput, mdp = passwordInput)
                     // Switch sur le thread main pour le toast
                     withContext(Dispatchers.Main) {
                         if (token != null) {
