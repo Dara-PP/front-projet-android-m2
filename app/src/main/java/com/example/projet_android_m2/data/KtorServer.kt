@@ -16,6 +16,7 @@ import io.ktor.client.plugins.auth.*
 import io.ktor.client.plugins.auth.providers.bearer
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.statement.bodyAsText
 
 @Serializable
 data class AuthLoginUser(
@@ -25,7 +26,8 @@ data class AuthLoginUser(
 @Serializable
 data class RegisterUser(
     val username : String,
-    val password: String
+    val password: String,
+    val email : String
 )
 @Serializable
 data class AuthResponse(
@@ -65,20 +67,27 @@ class KtorServer {
             null
         }
     }
-
-    suspend fun register(context : Context, username: String, mdp: String ): String?{
+    // TODO Check le server 404 server erreur register marche pas
+    suspend fun register(context : Context, username: String, mdp: String, email: String ): String?{
         return try {
-            val response: HttpResponse = client.post("$urlServer/register"){
+            val response: HttpResponse = client.post("$urlServer/users"){
                 contentType(ContentType.Application.Json)
-                setBody(RegisterUser(username = username, password = mdp))
+                setBody(RegisterUser(username = username, password = mdp, email = email ))
             }
             // Donne un token maintenant
+            // TODO Changement server a faire pour token ?
+            val statusCode = response.status.value
+            val body = response.bodyAsText()
+            println("DEBUG STATUS SERVER : $statusCode")
+            println("DEBUG BODY SERVER : $body")
             if(response.status.value == 200){
-                val userData = response.body<AuthResponse>()
-                val token = userData.token
-                savToken(context, token, username)
-                println("Token apres register : $token")
-                token
+                //val userData = response.body<AuthResponse>()
+                //val token = userData.token
+                //println("Token apres register : $token")
+                //token
+                val body = response.bodyAsText()
+                savToken(context, body, username)
+                body
             }else{
                 null
             }
