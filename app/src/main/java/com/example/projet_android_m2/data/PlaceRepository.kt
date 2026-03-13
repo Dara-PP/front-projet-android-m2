@@ -87,6 +87,9 @@ class PlaceRepository(val context : Context) {
         placeCardDao.resetAllCatch()
         println("Etats des cartes remises à 0")
     }
+    suspend fun getCaughtCards(): List<PlaceCard> = withContext(Dispatchers.IO) {
+        placeCardDao.getUsersCards()
+    }
     //TODO: Relation avec le backend pas full local
     suspend fun generatePlaceCards(
         pageSize: Int = 2000,
