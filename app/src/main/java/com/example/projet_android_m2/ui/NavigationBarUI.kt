@@ -77,8 +77,11 @@ fun ContentScreen(modifier: Modifier = Modifier,
     when(selectedDestination){
         0 -> HomePage(navController = navController)
         1 -> ApplicationsScreen(
-            onAppClick = {
+            onDavidAppClick = {
                 navController.navigate("david_game")
+            },
+            onFrancoisAppClick = {
+                navController.navigate("Francois_game")
             }
         )
         2 -> OpenStreetMap()
