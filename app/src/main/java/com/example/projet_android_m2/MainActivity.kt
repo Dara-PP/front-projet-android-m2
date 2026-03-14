@@ -101,12 +101,9 @@ class MainActivity : ComponentActivity() {
                     }
                     composable("Francois_game") {
                         BombDefuseMiniGame(
-                            onSuccess = {
-                                println("Mini-jeu réussi")
-                                navController.popBackStack()
-                            },
-                            onFail = {
-                                println("Mini-jeu échoué")
+                            onGameFinished = { score ->
+                                if (score == 1) println("Mini-jeu réussi")
+                                else println("Mini-jeu échoué")
                                 navController.popBackStack()
                             }
                         )

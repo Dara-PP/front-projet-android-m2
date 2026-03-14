@@ -36,6 +36,7 @@ import com.example.projet_android_m2.PlaceCard
 import com.example.projet_android_m2.PlacePersonality
 import com.example.projet_android_m2.data.PlaceRepository
 import com.example.projet_android_m2.ui.game.ShakeTreeGame
+import com.example.projet_android_m2.ui.minigames.BombDefuseMiniGame
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import org.maplibre.spatialk.geojson.Position
@@ -211,6 +212,8 @@ fun OpenStreetMap (){
     }
 
     // TODO rajouter les autres jeux
+    // TODO faire une fonction maj map
+    // TODO fix rotation ecran quitte le jeu, ajout btn abandon capture
     // Si cardToCapture != null --> on affiche un jeu random en plein écran
     // On choisit le jeu au moment où la carte est sélectionnée en random
         cardToCapture?.let { card ->
@@ -229,6 +232,24 @@ fun OpenStreetMap (){
                                 println("Carte attraper${card.nameFr}")
                             } else {
                                 println("Echec capture${card.nameFr}")
+                            }
+                        }
+                        cardToCapture = null
+                        // TODO backend : repo.postCatchToServer(card.id, userId, score)
+                    }
+                )
+                MiniGame.BOMB_DEFUSE -> BombDefuseMiniGame(
+                    onGameFinished = { score ->
+                        scope.launch {
+                            println("Jeu BOMB")
+                            if (score >= scoreMinimum(currentGame)) {
+                                repo.catchCard(card.id)
+                                cards = repo.getPlaceCardsAroundGps(userLat, userLon)
+                                countZones = cards.count { it.zone }
+                                countLieux = cards.count { !it.zone }
+                                println("Carte attrapée : ${card.nameFr}")
+                            } else {
+                                println("Echec capture : ${card.nameFr}")
                             }
                         }
                         cardToCapture = null
@@ -352,11 +373,12 @@ fun OpenStreetMap (){
 }
 
 // Liste des jeux disponibles
-enum class MiniGame { SHAKE_TREE /*,Jsonderoulo*/ }
+enum class MiniGame { SHAKE_TREE, BOMB_DEFUSE }
 
 // Score minimum pour gagner la carte selon le jeu
 fun scoreMinimum(game: MiniGame): Int = when (game) {
     MiniGame.SHAKE_TREE -> 0
+    MiniGame.BOMB_DEFUSE-> 1
     // TODO RAJOUTER les autres jeux apres
 }
 
