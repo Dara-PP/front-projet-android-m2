@@ -82,6 +82,9 @@ fun ContentScreen(modifier: Modifier = Modifier,
             },
             onFrancoisAppClick = {
                 navController.navigate("Francois_game")
+            },
+            onDaraAppClick = {
+                navController.navigate("Dara_game")
             }
         )
         2 -> OpenStreetMap()
