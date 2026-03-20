@@ -16,6 +16,7 @@ import io.ktor.client.plugins.auth.*
 import io.ktor.client.plugins.auth.providers.bearer
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.statement.bodyAsText
 
 @Serializable
 data class AuthLoginUser(
@@ -26,7 +27,8 @@ data class AuthLoginUser(
 @Serializable
 data class RegisterUser(
     val username : String,
-    val password: String
+    val password: String,
+    val email : String
 )
 
 @Serializable
@@ -54,11 +56,12 @@ class KtorServer {
                 contentType(ContentType.Application.Json)
                 setBody(AuthLoginUser(username = username, password = mdp))
             }
-
+            // Donne un token maintenant
             if(response.status.value == 200){
                 val userData = response.body<AuthResponse>()
                 val token = userData.token
-                savToken(context, token, username)
+                // backend à changer pour le login !
+                savToken(context, token, username) // temporaire
                 println(token)
                 token
             }else{
@@ -70,19 +73,27 @@ class KtorServer {
             null
         }
     }
-
-    suspend fun register(context : Context, username: String, mdp: String ): String?{
+    // TODO Check le server 404 server erreur register marche pas
+    suspend fun register(context : Context, username: String, mdp: String, email: String ): String?{
         return try {
-            val response: HttpResponse = client.post("$urlServer/register"){
+            val response: HttpResponse = client.post("$urlServer/users"){
                 contentType(ContentType.Application.Json)
-                setBody(RegisterUser(username = username, password = mdp))
+                setBody(RegisterUser(username = username, password = mdp, email = email ))
             }
+            // Donne un token maintenant
+            // TODO Changement server a faire pour token ?
+            val statusCode = response.status.value
+            val body = response.bodyAsText()
+            println("DEBUG STATUS SERVER : $statusCode")
+            println("DEBUG BODY SERVER : $body")
             if(response.status.value == 200){
-                val userData = response.body<AuthResponse>()
-                val token = userData.token
-                savToken(context, token, username)
-                println("Token apres register : $token")
-                token
+                //val userData = response.body<AuthResponse>()
+                //val token = userData.token
+                //println("Token apres register : $token")
+                //token
+                val body = response.bodyAsText()
+                savToken(context, body, username)
+                body
             }else{
                 null
             }
@@ -92,12 +103,14 @@ class KtorServer {
         }
     }
 
+    // Get les informations de l'utilisateur // temporaire !!
     suspend fun me(context : Context): String?{
         return try {
             val token = getToken(context)
             val response: HttpResponse = client.get("$urlServer/me"){
                 header("Authorization", "Bearer $token")
             }
+            // Donne un token maintenant
             if(response.status.value == 200){
                 val body = response.body<String>()
                 println(body)
@@ -112,6 +125,7 @@ class KtorServer {
     }
 
     fun savToken(context : Context, token: String, username: String){
+        // Cree le fichier global AuthLog pour toutes les activity et écran, "persistant" tant que pas de logout
         val sharedPref = context.getSharedPreferences("AuthLog",Context.MODE_PRIVATE) ?: return
         with (sharedPref.edit()) {
             putString("AUTH_TOKEN", token)
@@ -131,6 +145,7 @@ class KtorServer {
     }
 
     fun logout(context: Context){
+        //client.clearAuthTokens() // check si c'est ok
         val sharedPref = context.getSharedPreferences("AuthLog",Context.MODE_PRIVATE)
         sharedPref.edit().clear().apply()
     }

@@ -22,8 +22,9 @@ import com.example.projet_android_m2.ui.auth.LoginPage
 import com.example.projet_android_m2.data.KtorServer
 import com.example.projet_android_m2.ui.LoadScreen
 import com.example.projet_android_m2.ui.NavigationBarUI
-import com.example.projet_android_m2.ui.ShakeTreeGame
+import com.example.projet_android_m2.ui.game.ShakeTreeGame
 import com.example.projet_android_m2.ui.auth.RegisterPage
+import com.example.projet_android_m2.ui.game.FireGame
 import com.example.projet_android_m2.ui.minigames.BombDefuseMiniGame
 
 
@@ -39,6 +40,8 @@ class MainActivity : ComponentActivity() {
             permissions.getOrDefault(Manifest.permission.ACCESS_COARSE_LOCATION, false) -> {
                 // Only approximate location access granted.
             }
+            permissions.getOrDefault(Manifest.permission.CAMERA, false) -> { }
+            permissions.getOrDefault(Manifest.permission.RECORD_AUDIO, false) -> { }
             else -> {
                 // No location access granted.
             }
@@ -57,7 +60,9 @@ class MainActivity : ComponentActivity() {
         locationPermissionRequest.launch(
             arrayOf(
                 Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_COARSE_LOCATION
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+                Manifest.permission.CAMERA,
+                Manifest.permission.RECORD_AUDIO
             )
         )
         setContent {
@@ -101,12 +106,18 @@ class MainActivity : ComponentActivity() {
                     }
                     composable("Francois_game") {
                         BombDefuseMiniGame(
-                            onSuccess = {
-                                println("Mini-jeu réussi")
+                            onGameFinished = { score ->
+                                if (score == 1) println("Mini-jeu réussi")
+                                else println("Mini-jeu échoué")
                                 navController.popBackStack()
-                            },
-                            onFail = {
-                                println("Mini-jeu échoué")
+                            }
+                        )
+                    }
+                    composable("Dara_game") {
+                        FireGame(
+                            onGameFinished = { score ->
+                                if (score == 1) println("Mini-jeu réussi")
+                                else println("Mini-jeu échoué")
                                 navController.popBackStack()
                             }
                         )
