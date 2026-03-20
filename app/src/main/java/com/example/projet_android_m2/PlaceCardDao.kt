@@ -59,4 +59,12 @@ interface PlaceCardDao {
         minLat: Double, maxLat: Double,
         minLon: Double, maxLon: Double
     ): List<PlaceCard>
+
+    // Reset les cartes catch pour test
+    @Query("UPDATE places_cards SET iscatch = 0")
+    suspend fun resetAllCatch()
+
+    // Get les cartes catch de l'user
+    @Query("SELECT * FROM places_cards WHERE iscatch = 1")
+    suspend fun getUsersCards(): List<PlaceCard>
 }

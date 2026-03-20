@@ -24,8 +24,7 @@ import kotlin.random.Random
 
 @Composable
 fun BombDefuseMiniGame(
-    onSuccess: () -> Unit,
-    onFail: () -> Unit
+    onGameFinished: (Int) -> Unit   // 1 = succès, 0 = échec
 ) {
     val context = LocalContext.current
     val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
@@ -104,7 +103,8 @@ fun BombDefuseMiniGame(
 
                     // Collision
                     if (dx < 80 && dy < 80) {
-                        onFail()
+                        //onFail()
+                        onGameFinished(0)
                     }
                 }
 
@@ -123,7 +123,8 @@ fun BombDefuseMiniGame(
                 }
 
                 if (stableTime >= 3f) {
-                    onSuccess()
+                    //onSuccess()
+                    onGameFinished(1)
                 }
             }
         }
