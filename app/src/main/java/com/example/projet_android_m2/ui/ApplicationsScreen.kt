@@ -18,7 +18,8 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun ApplicationsScreen(
     onDavidAppClick: () -> Unit = {},
-    onFrancoisAppClick: () -> Unit = {}
+    onFrancoisAppClick: () -> Unit = {},
+    onDaraAppClick: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier.Companion
@@ -42,6 +43,7 @@ fun ApplicationsScreen(
                     when (prenom) {
                         "David"    -> onDavidAppClick()
                         "François" -> onFrancoisAppClick()
+                        "Dara" -> onDaraAppClick()
                         else       -> println("Clic sur l'application de $prenom")
                     }
                 },
