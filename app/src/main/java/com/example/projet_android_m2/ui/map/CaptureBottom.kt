@@ -21,7 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.projet_android_m2.PlaceCard
+import com.example.projet_android_m2.data.db.PlaceCard
 import kotlin.math.abs
 
 private const val HITBOX_LIEU = 0.05 // 0.05 ~ 5km, variable globale à centraliser qql part

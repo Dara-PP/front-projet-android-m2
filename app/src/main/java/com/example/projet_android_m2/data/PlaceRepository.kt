@@ -1,9 +1,9 @@
 package com.example.projet_android_m2.data
 
 import android.content.Context
-import com.example.projet_android_m2.PlaceCard
-import com.example.projet_android_m2.PlaceDatabase
-import com.example.projet_android_m2.PlacePersonality
+import com.example.projet_android_m2.data.db.PlaceCard
+import com.example.projet_android_m2.data.db.PlaceDatabase
+import com.example.projet_android_m2.data.db.PlacePersonality
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow

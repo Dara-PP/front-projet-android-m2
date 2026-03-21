@@ -38,8 +38,8 @@ data class AuthResponse(
 )
 
 class KtorServer {
-    private val urlServer = "http://10.0.2.2:8080"
-    // private val urlServer = "https://ktor-server-forandroidapp.onrender.com"
+    //private val urlServer = "http://10.0.2.2:8080"
+    private val urlServer = "https://ktor-server-forandroidapp.onrender.com"
 
     private val client = HttpClient(CIO) {
         install(ContentNegotiation) {

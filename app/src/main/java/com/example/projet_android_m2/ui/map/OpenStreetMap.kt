@@ -32,8 +32,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.projet_android_m2.PlaceCard
-import com.example.projet_android_m2.PlacePersonality
+import com.example.projet_android_m2.data.db.PlaceCard
+import com.example.projet_android_m2.data.db.PlacePersonality
 import com.example.projet_android_m2.data.PlaceRepository
 import com.example.projet_android_m2.ui.game.FireGame
 import com.example.projet_android_m2.ui.game.ShakeTreeGame
