@@ -1,0 +1,18 @@
+Fapecargo (FAmous PEople CARd GO) est un jeu de collection de cartes biographiques géolocalisées inspiré de Pokémon Go.
+
+Explorez le monde réel pour capturer des cartes de personnalités célèbres liées à des lieux historiques : maisons natales, lieux de travail, tombes...
+
+<b>Fonctionnalités :</b>
+<ul>
+<li>Carte interactive OpenStreetMap avec les cartes à proximité</li>
+<li>Mini-jeux originaux utilisant les capteurs du téléphone :
+  - Secoue le pommier (accéléromètre)
+  - Désamorce la bombe (accéléromètre)
+  - Allume le feu (micro + caméra)
+</li>
+<li>Collection personnelle avec historique de possession</li>
+<li>Transfert de cartes entre joueurs</li>
+<li>Compte joueur avec authentification</li>
+</ul>
+
+Les cartes sont placées près des lieux liés aux personnalités célèbres issues de Wikidata. Approchez-vous pour les capturer !
