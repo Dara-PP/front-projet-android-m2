@@ -16,6 +16,7 @@ constraintlayout = "2.1.4"
 runtime = "1.10.3"
 navigationCompose = "2.9.7"
 foundationLayout = "1.10.4"
+runtimeVersion = "1.10.5"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -41,6 +42,7 @@ androidx-compose-runtime = { group = "androidx.compose.runtime", name = "runtime
 maplibre-compose = { module = "org.maplibre.compose:maplibre-compose", version = "0.12.1" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 androidx-compose-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayout" }
+androidx-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "runtimeVersion" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
