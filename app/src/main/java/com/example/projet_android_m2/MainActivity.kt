@@ -25,6 +25,7 @@ import com.example.projet_android_m2.ui.NavigationBarUI
 import com.example.projet_android_m2.ui.game.ShakeTreeGame
 import com.example.projet_android_m2.ui.auth.RegisterPage
 import com.example.projet_android_m2.ui.game.FireGame
+import com.example.projet_android_m2.ui.game.signalGame.SignalGame
 import com.example.projet_android_m2.ui.minigames.BombDefuseMiniGame
 
 
@@ -115,6 +116,15 @@ class MainActivity : ComponentActivity() {
                     }
                     composable("Dara_game") {
                         FireGame(
+                            onGameFinished = { score ->
+                                if (score == 1) println("Mini-jeu réussi")
+                                else println("Mini-jeu échoué")
+                                navController.popBackStack()
+                            }
+                        )
+                    }
+                    composable("Florian_game") {
+                        SignalGame(
                             onGameFinished = { score ->
                                 if (score == 1) println("Mini-jeu réussi")
                                 else println("Mini-jeu échoué")
