@@ -8,7 +8,7 @@ import com.example.projet_android_m2.data.db.PlaceDao
 import com.example.projet_android_m2.data.db.PlacePersonality
 
 @Database(
-    entities = [PlacePersonality::class, PlaceCard::class],
+    entities = [PlacePersonality::class, PlaceCard::class, CardHistory::class],
     version = 2 // Migration pour base de donnée
 )
 // Prompt Claude Sonnet 4.6 : Donne moi le code pour initier une base de données Room en kotlin en te basant sur mes fichier fichier PlacePersonalitly.kt et PlaceDao.kt,
@@ -16,6 +16,7 @@ import com.example.projet_android_m2.data.db.PlacePersonality
 abstract class PlaceDatabase: RoomDatabase() {
     abstract fun placeDao(): PlaceDao
     abstract fun placeCardDao(): PlaceCardDao
+    abstract fun cardHistoryDao(): CardHistoryDao
 
     companion object {
         @Volatile private var INSTANCE: PlaceDatabase? = null

@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.projet_android_m2.data.KtorServer
 import com.example.projet_android_m2.data.db.PlaceCard
 import com.example.projet_android_m2.data.db.PlacePersonality
 import com.example.projet_android_m2.data.PlaceRepository
@@ -67,6 +68,8 @@ fun OpenStreetMap (){
     val scope = rememberCoroutineScope()
     var places by remember { mutableStateOf<List<PlacePersonality>>(emptyList()) }
     var cards by remember { mutableStateOf<List<PlaceCard>>(emptyList()) }
+    val userId = KtorServer().getUsername(context) ?: ""
+
     // Point sélectionné au clic
     var selectedName  by remember { mutableStateOf("") }
     var selectedPlace by remember { mutableStateOf("") }
@@ -226,7 +229,7 @@ fun OpenStreetMap (){
                             println("Jeu SHAKE_TREE")
                             // Score minimum requis pour attraper la carte
                             if (score >= scoreMinimum(currentGame)) {
-                                repo.catchCard(card.id)
+                                repo.catchCard(card.id, userId)
                                 // Rafraichit la liste des cartes sur la map
                                 cards = repo.getPlaceCardsAroundGps(userLat, userLon)
                                 countZones = cards.count { it.zone }
@@ -245,7 +248,7 @@ fun OpenStreetMap (){
                         scope.launch {
                             println("Jeu BOMB")
                             if (score >= scoreMinimum(currentGame)) {
-                                repo.catchCard(card.id)
+                                repo.catchCard(card.id, userId)
                                 cards = repo.getPlaceCardsAroundGps(userLat, userLon)
                                 countZones = cards.count { it.zone }
                                 countLieux = cards.count { !it.zone }
@@ -262,7 +265,7 @@ fun OpenStreetMap (){
                     onGameFinished = { score ->
                         scope.launch {
                             if (score >= scoreMinimum(currentGame)) {
-                                repo.catchCard(card.id)
+                                repo.catchCard(card.id, userId)
                                 cards = repo.getPlaceCardsAroundGps(userLat, userLon)
                                 countZones = cards.count { it.zone }
                                 countLieux = cards.count { !it.zone }
@@ -275,7 +278,7 @@ fun OpenStreetMap (){
                     onGameFinished = { score ->
                         scope.launch {
                             if (score >= scoreMinimum(currentGame)) {
-                                repo.catchCard(card.id)
+                                repo.catchCard(card.id, userId)
                                 cards = repo.getPlaceCardsAroundGps(userLat, userLon)
                             }
                         }

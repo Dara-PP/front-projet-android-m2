@@ -31,31 +31,35 @@ interface PlaceCardDao {
     ): List<PlaceCard>
 
     // Marquer une carte comme attrapée
-    @Query("UPDATE places_cards SET iscatch = 1 WHERE id = :cardId")
-    suspend fun catchCard(cardId: Long)
+    @Query("UPDATE places_cards SET iscatch = 1, cardIdUser = :userId WHERE id = :cardId")
+    suspend fun catchCard(cardId: Long, userId: String)
 
     @Query("""
     SELECT * FROM places_cards
     WHERE iscatch = 0
+      AND (delayCatch IS NULL OR delayCatch < :now)
       AND zone = 1
       AND locationRandomLat BETWEEN :minLat AND :maxLat
       AND locationRandomLon BETWEEN :minLon AND :maxLon
 """)
     suspend fun getZoneCardsAround(
         minLat: Double, maxLat: Double,
-        minLon: Double, maxLon: Double
+        minLon: Double, maxLon: Double,
+        now: Long
     ): List<PlaceCard>
 
     @Query("""
     SELECT * FROM places_cards
     WHERE iscatch = 0
+      AND (delayCatch IS NULL OR delayCatch < :now)
       AND zone = 0
       AND locationRandomLat BETWEEN :minLat AND :maxLat
       AND locationRandomLon BETWEEN :minLon AND :maxLon
 """)
     suspend fun getLieuCardsAround(
         minLat: Double, maxLat: Double,
-        minLon: Double, maxLon: Double
+        minLon: Double, maxLon: Double,
+        now: Long
     ): List<PlaceCard>
 
     // Reset les cartes catch pour test
@@ -63,6 +67,12 @@ interface PlaceCardDao {
     suspend fun resetAllCatch()
 
     // Get les cartes catch de l'user
-    @Query("SELECT * FROM places_cards WHERE iscatch = 1")
-    suspend fun getUsersCards(): List<PlaceCard>
+    @Query("SELECT * FROM places_cards WHERE iscatch = 1 AND cardIdUser = :userId")
+
+    suspend fun getUsersCards(userId : String): List<PlaceCard>
+
+    // Lock la carte pendant la capture
+    // TODO check synchro avec backend, faire des pings ?
+    @Query("UPDATE places_cards SET delayCatch = :lockUntil WHERE id = :cardId")
+    suspend fun lockCard(cardId: Long, lockUntil: Long)
 }

@@ -21,5 +21,8 @@ data class PlaceCard(
 
     val zone: Boolean, // si zone ou point précis je pense
     val iscatch: Boolean = false,
+
+    val cardIdUser: String = "",
+    val delayCatch: Long? = null,
     @PrimaryKey val id: Long, // id du lieux
 )
