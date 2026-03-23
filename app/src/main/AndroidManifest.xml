@@ -24,6 +24,7 @@
         android:supportsRtl="true"
         android:usesCleartextTraffic="true"
         android:theme="@style/Theme.Projetandroidm2">
+        <service android:name=".MusicService" />
 
         <activity
             android:name=".MainActivity"
