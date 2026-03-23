@@ -104,7 +104,7 @@ fun OpenStreetMap() {
     // ÉCRAN DE JEU (Si une carte est en cours de capture)
     if (cardToCapture != null) {
         MiniGameHost(
-            game = MiniGame.SIGNAL_FINDER,
+            game = pickRandomGame(),
             onFinished = { score ->
                 scope.launch {
                     if (score >= 1) {
