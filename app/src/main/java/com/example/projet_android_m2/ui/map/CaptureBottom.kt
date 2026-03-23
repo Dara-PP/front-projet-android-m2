@@ -18,37 +18,26 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.projet_android_m2.PlaceCard
-import kotlin.math.abs
+import com.example.projet_android_m2.data.NearCard
 
-private const val HITBOX_LIEU = 0.05 // 0.05 ~ 5km, variable globale à centraliser qql part
-private const val HITBOX_ZONE = 0.05
+// Distance max en km pour qu'une carte soit capturable
+private const val HITBOX_KM = 0.5
 
-// Calcul distance simple en degrés
-// Retourne true si la carte est capturable depuis la position user
-fun estCapturables(card: PlaceCard, userLat: Double, userLon: Double): Boolean {
-    val diffLat = abs(card.locationRandomLat - userLat)
-    val diffLon = abs(card.locationRandomLon - userLon)
-    val seuil = if (card.zone) HITBOX_ZONE else HITBOX_LIEU
-    return diffLat < seuil && diffLon < seuil
-}
-//TODO()Faire la logique de score minimum avec la DB pour enclencher le gg de la carte
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CaptureBottom(
     userLat: Double,
     userLon: Double,
-    cardsAround: List<PlaceCard>,   // toutes les cartes chargées autour du joueur
+    cards: List<NearCard>,
     onDismiss: () -> Unit,
-    onCaptureClick: (PlaceCard) -> Unit // callback -> lance le mini-jeu
+    onCaptureClick: (NearCard) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState()
 
-    // Filtre les cartes capturable selon la distance user
-    val capturable = cardsAround.filter { estCapturables(it, userLat, userLon)}
+    // L'API retourne déjà distance_km, on filtre directement
+    val capturable = cards.filter { it.distance_km <= HITBOX_KM }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -92,19 +81,28 @@ fun CaptureBottom(
         }
     }
 }
+
 @Composable
 fun CaptureCardItem(
-    card: PlaceCard,
+    card: NearCard,
     onCaptureClick: () -> Unit
 ) {
-    val nom = card.personNameFr?: card.personNameEn ?: "?"
-    val lieu = card.nameFr ?: card.nameEn ?: "?"
-    val type = if (card.zone) "Zone" else "Lieu"
-
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
-        Text(text = nom, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-        Text(text = lieu, fontSize = 14.sp, color = Color.DarkGray)
-        Text(text = type, fontSize = 12.sp, color = Color.Gray)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 10.dp)
+    ) {
+        Text(text = card.person_name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Text(
+            text = "%.0f m".format(card.distance_km * 1000),
+            fontSize = 14.sp,
+            color = Color.DarkGray
+        )
+        Text(
+            text = "Power : ${card.power}",
+            fontSize = 12.sp,
+            color = Color.Gray
+        )
         Spacer(modifier = Modifier.height(8.dp))
         Button(
             onClick = onCaptureClick,
@@ -114,47 +112,4 @@ fun CaptureCardItem(
             Text("Attraper !", color = Color.White)
         }
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun TestCaptureBottom() {
-    val listCards = listOf(
-        PlaceCard(
-            personId = 1L,
-            personNameFr = "Victor Hugo",
-            personNameEn = "Victor Hugo",
-            nameFr = "Maison de Victor Hugo",
-            nameEn = "Victor Hugo's House",
-            locationLat = 48.8566,
-            locationLon = 2.3522,
-            locationRandomLat = 48.857,
-            locationRandomLon = 2.353,
-            zone = false,
-            iscatch = false,
-            id = 101L
-        ),
-        PlaceCard(
-            personId = 2L,
-            personNameFr = "Napoléon Bonaparte",
-            personNameEn = "Napoleon Bonaparte",
-            nameFr = "Champ de bataille d'Austerlitz",
-            nameEn = "Battle of Austerlitz",
-            locationLat = 49.1,
-            locationLon = 2.5,
-            locationRandomLat = 48.86,
-            locationRandomLon = 2.36,
-            zone = true,
-            iscatch = false,
-            id = 202L
-        )
-    )
-
-    CaptureBottom(
-        userLat = 48.857,
-        userLon = 2.353,
-        cardsAround = listCards,
-        onDismiss = {},
-        onCaptureClick = {}
-    )
 }
