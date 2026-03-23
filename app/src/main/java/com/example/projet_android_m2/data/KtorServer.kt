@@ -17,6 +17,8 @@ import io.ktor.client.plugins.auth.providers.bearer
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
+import io.ktor.client.request.*
+import io.ktor.client.call.*
 
 @Serializable
 data class AuthLoginUser(
@@ -43,10 +45,9 @@ class KtorServer {
 
     private val client = HttpClient(CIO) {
         install(ContentNegotiation) {
-            json()
-        }
-        install(Auth){
-            bearer{}
+            json(kotlinx.serialization.json.Json {
+                ignoreUnknownKeys = true
+            })
         }
     }
 
@@ -60,11 +61,11 @@ class KtorServer {
             if(response.status.value == 200){
                 val userData = response.body<AuthResponse>()
                 val token = userData.token
-                // backend à changer pour le login !
                 savToken(context, token, username) // temporaire
                 println(token)
                 token
-            }else{
+            }
+            else{
                 println("Erreur HTTP: ${response.status}")
                 null
             }
@@ -148,5 +149,34 @@ class KtorServer {
         //client.clearAuthTokens() // check si c'est ok
         val sharedPref = context.getSharedPreferences("AuthLog",Context.MODE_PRIVATE)
         sharedPref.edit().clear().apply()
+    }
+
+    suspend fun getPantheon(context: Context): List<PantheonPlayerResponse> {
+        return try {
+            val token = getToken(context)
+            println("DEBUG TOKEN ENVOYÉ : $token")
+            if (token != null) {
+                val response = client.get("$urlServer/pantheon") {
+                    header("Authorization", "Bearer $token")
+                }
+
+                println("DEBUG PANTHEON - Statut HTTP : ${response.status.value}")
+                val texteBrut = response.bodyAsText()
+                println("DEBUG PANTHEON - Réponse brute du serveur : $texteBrut")
+
+                if (response.status.value == 200) {
+                    kotlinx.serialization.json.Json.decodeFromString(texteBrut)
+                }
+                else {
+                    emptyList()
+                }
+            } else {
+                println("DEBUG PANTHEON - Pas de token trouvé !")
+                emptyList()
+            }
+        } catch (e: Exception) {
+            println("DEBUG PANTHEON - Erreur totale (crash réseau) : ${e.message}")
+            emptyList()
+        }
     }
 }

@@ -85,7 +85,10 @@ fun ContentScreen(modifier: Modifier = Modifier,
             },
             onDaraAppClick = {
                 navController.navigate("Dara_game")
-            }
+            },
+            onFlorianAppClick = {
+                navController.navigate("Florian_game")
+            },
         )
         2 -> OpenStreetMap()
         3 -> JsonDeroulo()

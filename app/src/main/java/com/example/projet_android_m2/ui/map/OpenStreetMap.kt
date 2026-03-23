@@ -37,6 +37,7 @@ import com.example.projet_android_m2.data.db.PlacePersonality
 import com.example.projet_android_m2.data.PlaceRepository
 import com.example.projet_android_m2.ui.game.FireGame
 import com.example.projet_android_m2.ui.game.ShakeTreeGame
+import com.example.projet_android_m2.ui.game.signalGame.SignalGame
 import com.example.projet_android_m2.ui.minigames.BombDefuseMiniGame
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
@@ -270,6 +271,17 @@ fun OpenStreetMap (){
                         cardToCapture = null
                     }
                 )
+                MiniGame.SIGNAL_FINDER -> SignalGame(
+                    onGameFinished = { score ->
+                        scope.launch {
+                            if (score >= scoreMinimum(currentGame)) {
+                                repo.catchCard(card.id)
+                                cards = repo.getPlaceCardsAroundGps(userLat, userLon)
+                            }
+                        }
+                    },
+                    context = LocalContext.current
+                ).start()
                 // MiniGame.AUTRE_JEU -> AutreJeu(onGameFinished = { score -> ... })
             }
             return
@@ -387,13 +399,14 @@ fun OpenStreetMap (){
 }
 
 // Liste des jeux disponibles
-enum class MiniGame { SHAKE_TREE, BOMB_DEFUSE, HIDE_BLOW }
+enum class MiniGame { SHAKE_TREE, BOMB_DEFUSE, HIDE_BLOW, SIGNAL_FINDER}
 
 // Score minimum pour gagner la carte selon le jeu
 fun scoreMinimum(game: MiniGame): Int = when (game) {
     MiniGame.SHAKE_TREE -> 0
     MiniGame.BOMB_DEFUSE-> 1
     MiniGame.HIDE_BLOW->1
+    MiniGame.SIGNAL_FINDER->1
     // TODO RAJOUTER les autres jeux apres
 }
 
