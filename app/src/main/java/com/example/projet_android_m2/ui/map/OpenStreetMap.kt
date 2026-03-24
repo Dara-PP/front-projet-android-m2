@@ -308,7 +308,7 @@ fun OpenStreetMap() {
             }
         )
     }
-
+}
 @Preview
 @Composable
 fun TestMap(){
