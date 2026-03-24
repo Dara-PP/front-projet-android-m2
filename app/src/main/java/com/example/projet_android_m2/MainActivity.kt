@@ -1,6 +1,7 @@
 package com.example.projet_android_m2
 
 import android.Manifest
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -56,12 +57,11 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     @RequiresApi(Build.VERSION_CODES.N)
     override fun onCreate(savedInstanceState: Bundle?) {
+        val musicIntent = Intent(this, MusicService::class.java)
+        startService(musicIntent)
         super.onCreate(savedInstanceState)
         // instanciation du serveur
         val server = KtorServer()
-        // Before you perform the actual permission request, check whether your app
-        // already has the permissions, and whether your app needs to show a permission
-        // rationale dialog. For more details, see Request permissions:
         // https://developer.android.com/training/permissions/requesting#request-permission
         locationPermissionRequest.launch(
             arrayOf(

@@ -34,7 +34,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
-import org.maplibre.spatialk.geojson.Position
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.rememberCameraState
 import org.maplibre.compose.location.rememberDefaultLocationProvider
@@ -65,7 +64,7 @@ fun PlaceCard.toNearCard(userLat: Double, userLon: Double): NearCard {
 }
 
 @Composable
-fun OpenStreetMap (){
+fun OpenStreetMap() {
     val context = LocalContext.current
     val server = remember { KtorServer() }
     val repo = remember { PlaceRepository(context) }
@@ -309,7 +308,6 @@ fun OpenStreetMap (){
             }
         )
     }
-}
 
 @Preview
 @Composable
