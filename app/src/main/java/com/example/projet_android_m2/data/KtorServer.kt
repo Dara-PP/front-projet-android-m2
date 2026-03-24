@@ -40,10 +40,11 @@ data class AuthResponse(
 )
 
 class KtorServer {
-    //private val urlServer = "http://10.0.2.2:8080"
-    private val urlServer = "https://ktor-server-forandroidapp.onrender.com"
+    // internal : accessible depuis les fichiers d'extension du même module
+    //internal val urlServer = "http://10.0.2.2:8080"
+    internal val urlServer = "https://ktor-server-forandroidapp.onrender.com"
 
-    private val client = HttpClient(CIO) {
+    internal val client = HttpClient(CIO) {
         install(ContentNegotiation) {
             json(kotlinx.serialization.json.Json {
                 ignoreUnknownKeys = true

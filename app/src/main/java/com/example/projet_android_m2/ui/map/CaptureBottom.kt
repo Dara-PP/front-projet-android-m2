@@ -21,11 +21,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.projet_android_m2.data.NearCard
 import com.example.projet_android_m2.data.db.PlaceCard
 import kotlin.math.abs
 
 private const val HITBOX_LIEU = 0.05 // 0.05 ~ 5km, variable globale à centraliser qql part
 private const val HITBOX_ZONE = 0.05
+private const val HITBOX_KM   = 5.0   // Seuil en km pour les NearCard (API)
 
 // Calcul distance simple en degrés
 // Retourne true si la carte est capturable depuis la position user
@@ -36,19 +38,19 @@ fun estCapturables(card: PlaceCard, userLat: Double, userLon: Double): Boolean {
     return diffLat < seuil && diffLon < seuil
 }
 //TODO()Faire la logique de score minimum avec la DB pour enclencher le gg de la carte
+//  API Utilisée quand les cartes viennent du backend (NearCard)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CaptureBottom(
     userLat: Double,
     userLon: Double,
-    cardsAround: List<PlaceCard>,   // toutes les cartes chargées autour du joueur
+    cards: List<NearCard>, // toutes les cartes chargées autour du joueur
     onDismiss: () -> Unit,
-    onCaptureClick: (PlaceCard) -> Unit // callback -> lance le mini-jeu
+    onCaptureClick: (NearCard) -> Unit // callback -> lance le mini-jeu
 ) {
     val sheetState = rememberModalBottomSheetState()
-
-    // Filtre les cartes capturable selon la distance user
-    val capturable = cardsAround.filter { estCapturables(it, userLat, userLon)}
+    // L'API retourne déjà distance_km on filtre directement
+    val capturable = cards.filter { it.distance_km <= HITBOX_KM }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -94,17 +96,25 @@ fun CaptureBottom(
 }
 @Composable
 fun CaptureCardItem(
-    card: PlaceCard,
+    card: NearCard,
     onCaptureClick: () -> Unit
 ) {
-    val nom = card.personNameFr?: card.personNameEn ?: "?"
-    val lieu = card.nameFr ?: card.nameEn ?: "?"
-    val type = if (card.zone) "Zone" else "Lieu"
-
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
-        Text(text = nom, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-        Text(text = lieu, fontSize = 14.sp, color = Color.DarkGray)
-        Text(text = type, fontSize = 12.sp, color = Color.Gray)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 10.dp)
+    ) {
+        Text(text = card.person_name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Text(
+            text = "%.0f m".format(card.distance_km * 1000),
+            fontSize = 14.sp,
+            color = Color.DarkGray
+        )
+        Text(
+            text = "Power : ${card.power}",
+            fontSize = 12.sp,
+            color = Color.Gray
+        )
         Spacer(modifier = Modifier.height(8.dp))
         Button(
             onClick = onCaptureClick,
@@ -120,40 +130,29 @@ fun CaptureCardItem(
 @Composable
 fun TestCaptureBottom() {
     val listCards = listOf(
-        PlaceCard(
-            personId = 1L,
-            personNameFr = "Victor Hugo",
-            personNameEn = "Victor Hugo",
-            nameFr = "Maison de Victor Hugo",
-            nameEn = "Victor Hugo's House",
-            locationLat = 48.8566,
-            locationLon = 2.3522,
-            locationRandomLat = 48.857,
-            locationRandomLon = 2.353,
-            zone = false,
-            iscatch = false,
-            id = 101L
+        NearCard(
+            id = "101",
+            wikidata_id = "Q535",
+            person_name = "Victor Hugo",
+            lat = 48.857,
+            lon = 2.353,
+            power = 42,
+            distance_km = 0.3
         ),
-        PlaceCard(
-            personId = 2L,
-            personNameFr = "Napoléon Bonaparte",
-            personNameEn = "Napoleon Bonaparte",
-            nameFr = "Champ de bataille d'Austerlitz",
-            nameEn = "Battle of Austerlitz",
-            locationLat = 49.1,
-            locationLon = 2.5,
-            locationRandomLat = 48.86,
-            locationRandomLon = 2.36,
-            zone = true,
-            iscatch = false,
-            id = 202L
+        NearCard(
+            id = "202",
+            wikidata_id = "Q517",
+            person_name = "Napoléon Bonaparte",
+            lat = 48.86,
+            lon = 2.36,
+            power = 78,
+            distance_km = 1.2
         )
     )
-
     CaptureBottom(
         userLat = 48.857,
         userLon = 2.353,
-        cardsAround = listCards,
+        cards = listCards,
         onDismiss = {},
         onCaptureClick = {}
     )

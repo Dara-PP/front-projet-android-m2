@@ -8,6 +8,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LocalRippleConfiguration
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,6 +53,7 @@ class MainActivity : ComponentActivity() {
         }
 
     }
+    @OptIn(ExperimentalMaterial3Api::class)
     @RequiresApi(Build.VERSION_CODES.N)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -67,70 +72,79 @@ class MainActivity : ComponentActivity() {
             )
         )
         setContent {
-            val navController = rememberNavController()
-            val context = LocalContext.current
-            val token = server.getToken(context)
-            // check si utilisateur login ou pas
-            var page = if (token != null) "home" else "login"
-            // Etat du chargement
-            var isLoadingDone by remember { mutableStateOf(false) }
+            MaterialTheme {
+                // bug bizzare de version ripple wip
+                val currentRipple = LocalRippleConfiguration.current
+                CompositionLocalProvider(
+                    LocalRippleConfiguration provides if (Build.VERSION.SDK_INT in Build.VERSION_CODES.Q..Build.VERSION_CODES.S) null else currentRipple
 
-            if (!isLoadingDone){
-                LoadScreen(
-                    onLoadComplete = {
-                        isLoadingDone = true
-                    }
-                )
-            } else{
-                NavHost(
-                    navController = navController,
-                    startDestination = page,
-                    modifier = Modifier.padding(10.dp)
-                ){
-                    composable("home"){
-                        //La bar de navigation a scaffold donc il gere lui meme ca place
-                        NavigationBarUI(navController = navController)
-                    }
-                    composable ("login" ){
-                        LoginPage(navController = navController)
-                    }
-                    composable ("register" ){
-                        RegisterPage(navController = navController)
-                    }
-                    composable("david_game") {
-                        ShakeTreeGame(
-                            onGameFinished = { score ->
-                                println("Partie terminée avec un score de $score !")
-                                navController.popBackStack()
+                ) {
+                    val navController = rememberNavController()
+                    val context = LocalContext.current
+                    val token = server.getToken(context)
+                    // check si utilisateur login ou pas
+                    var page = if (token != null) "home" else "login"
+                    // Etat du chargement
+                    var isLoadingDone by remember { mutableStateOf(false) }
+
+                if (!isLoadingDone){
+                    LoadScreen(
+                        onLoadComplete = {
+                            isLoadingDone = true
+                        }
+                    )
+                    } else{
+                        NavHost(
+                            navController = navController,
+                            startDestination = page,
+                            modifier = Modifier.padding(10.dp)
+                        ){
+                            composable("home"){
+                                //La bar de navigation a scaffold donc il gere lui meme ca place
+                                NavigationBarUI(navController = navController)
                             }
-                        )
-                    }
-                    composable("Francois_game") {
-                        BombDefuseMiniGame(
-                            onGameFinished = { score ->
-                                if (score == 1) println("Mini-jeu réussi")
-                                else println("Mini-jeu échoué")
-                                navController.popBackStack()
+                            composable ("login" ){
+                                LoginPage(navController = navController)
                             }
-                        )
-                    }
-                    composable("Dara_game") {
-                        FireGame(
-                            onGameFinished = { score ->
-                                if (score == 1) println("Mini-jeu réussi")
-                                else println("Mini-jeu échoué")
-                                navController.popBackStack()
+                            composable ("register" ){
+                                RegisterPage(navController = navController)
                             }
-                        )
-                    }
-                    composable("Florian_game") {
-                        SignalGame(
-                            onGameFinished = { score ->
-                                if (score == 1) println("Mini-jeu réussi")
-                                else println("Mini-jeu échoué")
-                                navController.popBackStack()
+                            composable("david_game") {
+                                ShakeTreeGame(
+                                    onGameFinished = { score ->
+                                        println("Partie terminée avec un score de $score !")
+                                        navController.popBackStack()
+                                    }
+                                )
                             }
-                        )
+                            composable("Francois_game") {
+                                BombDefuseMiniGame(
+                                    onGameFinished = { score ->
+                                        if (score == 1) println("Mini-jeu réussi")
+                                        else println("Mini-jeu échoué")
+                                        navController.popBackStack()
+                                    }
+                                )
+                            }
+                            composable("Dara_game") {
+                                FireGame(
+                                    onGameFinished = { score ->
+                                        if (score == 1) println("Mini-jeu réussi")
+                                        else println("Mini-jeu échoué")
+                                        navController.popBackStack()
+                                    }
+                                )
+                            }
+                            composable("Florian_game") {
+                                SignalGame(
+                                    onGameFinished = { score ->
+                                        if (score == 1) println("Mini-jeu réussi")
+                                        else println("Mini-jeu échoué")
+                                        navController.popBackStack()
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }

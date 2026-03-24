@@ -1,24 +1,18 @@
 package com.example.projet_android_m2.ui.map
 
-import android.annotation.SuppressLint
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
+import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -28,424 +22,295 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.projet_android_m2.data.KtorServer
-import com.example.projet_android_m2.data.db.PlaceCard
-import com.example.projet_android_m2.data.db.PlacePersonality
+import com.example.projet_android_m2.data.NearCard
 import com.example.projet_android_m2.data.PlaceRepository
-import com.example.projet_android_m2.ui.game.FireGame
-import com.example.projet_android_m2.ui.game.ShakeTreeGame
-import com.example.projet_android_m2.ui.game.signalGame.SignalGame
-import com.example.projet_android_m2.ui.minigames.BombDefuseMiniGame
+import com.example.projet_android_m2.data.db.PlaceCard
+import com.example.projet_android_m2.data.getCardsNear
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import org.maplibre.spatialk.geojson.Position
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.rememberCameraState
-import org.maplibre.compose.expressions.dsl.const
-import org.maplibre.compose.layers.CircleLayer
-import org.maplibre.compose.location.LocationPuck
 import org.maplibre.compose.location.rememberDefaultLocationProvider
 import org.maplibre.compose.location.rememberUserLocationState
 import org.maplibre.compose.map.MaplibreMap
-import org.maplibre.compose.sources.GeoJsonData
-import org.maplibre.compose.sources.rememberGeoJsonSource
 import org.maplibre.compose.style.BaseStyle
-import org.maplibre.compose.util.ClickResult
-import org.maplibre.compose.layers.LineLayer
-import kotlin.math.cos
-import kotlin.math.sin
+import kotlin.math.abs
+import kotlin.math.sqrt
+import kotlin.time.Duration.Companion.milliseconds
 
-@OptIn(ExperimentalMaterial3Api::class)
-@SuppressLint("RememberReturnType")
+private const val RANGE_KM = 5.0
+
+//Convertit une PlaceCard locale en NearCard pour l'affichage sur la carte.
+fun PlaceCard.toNearCard(userLat: Double, userLon: Double): NearCard {
+    val dLat = locationRandomLat - userLat
+    val dLon = locationRandomLon - userLon
+    val distKm = sqrt(dLat * dLat + dLon * dLon) * 111.0
+    return NearCard(
+        id = id.toString(),
+        wikidata_id = personId.toString(),
+        person_name = personNameFr ?: personNameEn ?: "Inconnu",
+        lat = locationRandomLat,
+        lon = locationRandomLon,
+        // TODO API BACKEND CALCUL DE SCORE POWER
+        power = (personId % 100).toInt().coerceIn(1, 99), // temporaire, à remplacer par vraie stat plus tard position carte
+        distance_km = distKm
+    )
+}
+
 @Composable
 fun OpenStreetMap (){
     val context = LocalContext.current
+    val server = remember { KtorServer() }
     val repo = remember { PlaceRepository(context) }
     val scope = rememberCoroutineScope()
-    var places by remember { mutableStateOf<List<PlacePersonality>>(emptyList()) }
-    var cards by remember { mutableStateOf<List<PlaceCard>>(emptyList()) }
-    val userId = KtorServer().getUsername(context) ?: ""
+    val userId = server.getUsername(context) ?: ""
 
-    // Point sélectionné au clic
-    var selectedName  by remember { mutableStateOf("") }
-    var selectedPlace by remember { mutableStateOf("") }
-    var selectedType  by remember { mutableStateOf("") }
-    var showSheet by remember { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState()
-
-    // Localisation
-    val local = rememberDefaultLocationProvider()
-    val locationState = rememberUserLocationState(local)
+    // Localisation & Caméra
+    val locationProvider = rememberDefaultLocationProvider()
+    val locationState = rememberUserLocationState(locationProvider)
     val cameraState = rememberCameraState()
-    var userLat by remember { mutableDoubleStateOf(0.0) }
-    var userLon by remember { mutableDoubleStateOf(0.0) }
-    val radiusKm = 2.0
 
-    // Stats de proximité
-    var countZones by remember { mutableIntStateOf(0) }
-    var countLieux by remember { mutableIntStateOf(0) }
+    var userLat by remember { mutableDoubleStateOf(-1.0) }
+    var userLon by remember { mutableDoubleStateOf(-1.0) }
 
-    // Etat sheet capture
-    var showCapture by remember { mutableStateOf(false) }
+    // Données
+    var cards by remember { mutableStateOf<List<NearCard>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(false) }
+    var showUserStats by remember { mutableStateOf(false) }
 
-    // Etat de la carte & jeu
-    var cardToCapture by remember { mutableStateOf<PlaceCard?>(null) }
-    var currentGame by remember { mutableStateOf(MiniGame.SHAKE_TREE) }
+    // États des Sélections (Sheet d'info)
+    var selectedCard by remember { mutableStateOf<NearCard?>(null) }
+    var showSheet by remember { mutableStateOf(false) }
 
+    //  États du Jeu (Capture)
+    var showCaptureList by remember { mutableStateOf(false) }
+    var cardToCapture by remember { mutableStateOf<NearCard?>(null) }
+    var currentGame by remember { mutableStateOf(pickRandomGame()) }
+
+    // Fonction de rafraîchissement
+    // Room locale toujours dispo, API en complément
+    suspend fun refreshCards(lat: Double, lon: Double) {
+        if (lat == -1.0 || lon == -1.0) return
+        isLoading = true
+        try {
+            // Room locale (PlaceCard --> NearCard)
+            val localCards = repo.getPlaceCardsAroundGps(lat, lon)
+            val localAsNearCards = localCards.map { it.toNearCard(lat, lon) }
+            Log.d("CARDS", "${localAsNearCards.size} cartes locales Room trouvées")
+
+            // API backend (si disponible)
+            var apiCards = emptyList<NearCard>()
+            try {
+                apiCards = server.getCardsNear(context, lat, lon, RANGE_KM)
+                Log.d("CARDS", "${apiCards.size} cartes API reçues")
+            } catch (e: Exception) {
+                Log.w("CARDS", "API indisponible, mode local uniquement : ${e.message}")
+            }
+
+            // Fusion de locales + API par ID
+            val localIds = localAsNearCards.map { it.id }.toSet()
+            val apiOnly = apiCards.filter { it.id !in localIds }
+            cards = localAsNearCards + apiOnly
+
+            Log.d("CARDS", "Total affiché : ${cards.size} (${localAsNearCards.size} local + ${apiOnly.size} API)")
+        } catch (e: Exception) {
+            Log.e("CARDS", "Erreur chargement cartes : ${e.message}")
+            Toast.makeText(context, "Erreur chargement des cartes", Toast.LENGTH_SHORT).show()
+        } finally {
+            isLoading = false
+        }
+    }
+
+    // Surveillance de la position
     LaunchedEffect(Unit) {
-        // test avec seulement 1000 pour l'instant !
-        // Lat - lon affichage test
-        //repo.getPerson(offset = 0, size = 1000).collect { pointList ->
-        //    places = pointList
-        //    if (pointList.isNotEmpty()) {
-        //        val pointTest = pointList[2]
-        //        Log.d("PointId${pointTest.id}", "Lat: ${pointTest.locationLat}, Lon: ${pointTest.locationLon}")
-        //    }
         snapshotFlow { locationState.location }
             .filterNotNull()
-            .collect { userLoc ->
+            .distinctUntilChanged { old, new ->
+                val diffLat = abs(old.position.latitude - new.position.latitude)
+                val diffLon = abs(old.position.longitude - new.position.longitude)
+                diffLat < 0.0001 && diffLon < 0.0001
+            }
+            .collectLatest { userLoc ->
                 userLat = userLoc.position.latitude
                 userLon = userLoc.position.longitude
-                //places = repo.getPlacesAroundGps(userLat, userLon, radiusKm)
-                cards = repo.getPlaceCardsAroundGps(userLat, userLon)
-                // Stats compter zones et lieux dans le rayon chargé
-                countZones = cards.count { it.zone }
-                countLieux = cards.count { !it.zone }
-                // Zoom sur l'user centrage
-                cameraState.position = CameraPosition(
-                    target = Position(longitude = userLon, latitude = userLat),
-                    zoom = 12.0
+
+                refreshCards(userLat, userLon)
+
+                cameraState.animateTo(
+                    finalPosition = CameraPosition(target = Position(userLon, userLat), zoom = 14.0),
+                    duration = 1000.milliseconds
                 )
             }
     }
 
-    // GeoJSON du cercle (avec 36 points)
-    val circleJson = remember(userLat, userLon) {
-        val points = (0..360 step 10)
-            .map { angle ->
-                val rad = Math.toRadians(angle.toDouble())
-                val pLat = userLat + (radiusKm / 111.0) * sin(rad)
-                val pLon = userLon + (radiusKm / 111.0) * cos(rad)
-                "[$pLon, $pLat]" // On crée d'abord une liste de strings
-            }
-            .joinToString(",") // On les assemble à la fin
-        """{
-            "type":"Feature",
-            "geometry":{
-                "type":"Polygon",
-                "coordinates":[[$points]]
+    // Préparation GeoJSON
+    val circleJson = remember(userLat, userLon) { buildCircleGeoJson(userLat, userLon, RANGE_KM) }
+    val cardsJson = remember(cards) { buildCardsGeoJson(cards) }
+
+    // Rendu de l'Interface
+
+    // ÉCRAN DE JEU (Si une carte est en cours de capture)
+    if (cardToCapture != null) {
+        MiniGameHost(
+            game = pickRandomGame(),
+            onFinished = { score ->
+                // TODO quand offline pas de capture !
+                scope.launch {
+                    val card = cardToCapture
+                    if (score >= 1) {
+                        val cardIdLong = card?.id?.toLongOrNull()
+                        if (cardIdLong != null) {
+                            try {
+                                repo.catchCard(cardIdLong, userId)
+                                Log.d("CAPTURE", "Carte $cardIdLong capturée en local pour $userId")
+                            } catch (e: Exception) {
+                                Log.e("CAPTURE", "Erreur Room catchCard : ${e.message}")
+                            }
+                        }
+
+                        // TODO rajouter le POST /catch quand la route existera sur le serveur
+
+                        Toast.makeText(context, "${card?.person_name} capturée !", Toast.LENGTH_LONG).show()
+
+                        // Refresh pour retirer la carte capturée de la map
+                        refreshCards(userLat, userLon)
+                    } else {
+                        Toast.makeText(context, "Échec de la capture...", Toast.LENGTH_SHORT).show()
+                    }
+                    cardToCapture = null // Retour à la carte
                 }
             }
-        """.trimMargin()
-    }
-    // TODO:  () Les localisations doivent etre stocké sur le server .... check backend
-    fun buildGeoJson(cards: List<PlaceCard>): String {
-        return """
-        {
-          "type": "FeatureCollection",
-          "features": [
-            ${cards.joinToString(",") { pointMap -> """
-            {
-              "type": "Feature",
-              "properties": {
-                "personName": "${(pointMap.personNameFr ?: pointMap.personNameEn ?: "?")
-                    .replace("\"", "'")}",
-                "placeName":  "${(pointMap.nameFr ?: pointMap.nameEn ?: "?")
-                    .replace("\"", "'")}",
-                "type":       "${if (pointMap.zone) "Zone" else "Lieu"}"
-              },
-              "geometry": {
-                "type": "Point",
-                "coordinates": [${pointMap.locationRandomLon}, ${pointMap.locationRandomLat}]
-              }
-            }
-            """.trimIndent()
-            }}
-          ]
-        }
-        """.trimIndent()
-    }
-
-    val zonesJson = remember(cards) {
-        buildGeoJson(cards.filter { it.zone })
-    }
-    val lieuxJson = remember(cards) {
-        buildGeoJson(cards.filter { !it.zone })
-    }
-
-    // Info Point
-    if (showSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showSheet = false },
-            sheetState = sheetState
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "Nom : $selectedName",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "Lieu : $selectedPlace",
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-                Text(
-                    text = "Type : $selectedType",
-                    modifier = Modifier.padding(top = 4.dp, bottom = 24.dp)
-                )
-            }
-        }
-    }
-    // Sheet liste cartes capturables
-    if (showCapture) {
-        CaptureBottom(
-            userLat = userLat,
-            userLon = userLon,
-            cardsAround = cards,
-            onDismiss = { showCapture = false },
-            onCaptureClick = { card ->
-                currentGame = pickRandomGame()
-                println("Capture lancée pour ${card.id}")
-                showCapture = false
-                cardToCapture = card
-            }
         )
+        return // Plein écran jeu
     }
 
-    // TODO rajouter les autres jeux
-    // TODO faire une fonction maj map
-    // TODO fix rotation ecran quitte le jeu, ajout btn abandon capture
-    // Si cardToCapture != null --> on affiche un jeu random en plein écran
-    // On choisit le jeu au moment où la carte est sélectionnée en random
-        cardToCapture?.let { card ->
-            when (currentGame) {
-                MiniGame.SHAKE_TREE -> ShakeTreeGame(
-                    onGameFinished = { score ->
-                        scope.launch {
-                            println("Jeu SHAKE_TREE")
-                            // Score minimum requis pour attraper la carte
-                            if (score >= scoreMinimum(currentGame)) {
-                                repo.catchCard(card.id, userId)
-                                // Rafraichit la liste des cartes sur la map
-                                cards = repo.getPlaceCardsAroundGps(userLat, userLon)
-                                countZones = cards.count { it.zone }
-                                countLieux = cards.count { !it.zone }
-                                println("Carte attraper${card.nameFr}")
-                            } else {
-                                println("Echec capture${card.nameFr}")
-                            }
-                        }
-                        cardToCapture = null
-                        // TODO backend : repo.postCatchToServer(card.id, userId, score)
-                    }
-                )
-                MiniGame.BOMB_DEFUSE -> BombDefuseMiniGame(
-                    onGameFinished = { score ->
-                        scope.launch {
-                            println("Jeu BOMB")
-                            if (score >= scoreMinimum(currentGame)) {
-                                repo.catchCard(card.id, userId)
-                                cards = repo.getPlaceCardsAroundGps(userLat, userLon)
-                                countZones = cards.count { it.zone }
-                                countLieux = cards.count { !it.zone }
-                                println("Carte attrapée : ${card.nameFr}")
-                            } else {
-                                println("Echec capture : ${card.nameFr}")
-                            }
-                        }
-                        cardToCapture = null
-                        // TODO backend : repo.postCatchToServer(card.id, userId, score)
-                    }
-                )
-                MiniGame.HIDE_BLOW -> FireGame(
-                    onGameFinished = { score ->
-                        scope.launch {
-                            if (score >= scoreMinimum(currentGame)) {
-                                repo.catchCard(card.id, userId)
-                                cards = repo.getPlaceCardsAroundGps(userLat, userLon)
-                                countZones = cards.count { it.zone }
-                                countLieux = cards.count { !it.zone }
-                            }
-                        }
-                        cardToCapture = null
-                    }
-                )
-                MiniGame.SIGNAL_FINDER -> SignalGame(
-                    onGameFinished = { score ->
-                        scope.launch {
-                            if (score >= scoreMinimum(currentGame)) {
-                                repo.catchCard(card.id, userId)
-                                cards = repo.getPlaceCardsAroundGps(userLat, userLon)
-                            }
-                        }
-                    },
-                    context = LocalContext.current
-                ).start()
-                // MiniGame.AUTRE_JEU -> AutreJeu(onGameFinished = { score -> ... })
-            }
-            return
-        }
+    // ÉCRAN DE LA CARTE
     Box(modifier = Modifier.fillMaxSize()) {
         MaplibreMap(
             modifier = Modifier.fillMaxSize(),
             baseStyle = BaseStyle.Uri("https://tiles.openfreemap.org/styles/liberty"),
             cameraState = cameraState,
-        ){
-            // Transformation du json en source pour maplibre
-            // ZONES --> bleu
-            val sourceZones = rememberGeoJsonSource(
-                data = GeoJsonData.JsonString(zonesJson)
-            )
-            CircleLayer(
-                id = "zones",
-                source = sourceZones,
-                radius = const(7.dp),
-                color = const(Color.Blue),
-                onClick = { features ->
-                    val props = features.firstOrNull()?.properties
-                    if (props != null) {
-                        selectedName  = props.get("personName")?.toString()?: "?"
-                        selectedPlace = props.get("placeName")?.toString()?: "?"
-                        selectedType  = props.get("type")?.toString()?: "?"
-                        showSheet = true
-                        ClickResult.Consume
-                    } else ClickResult.Pass
-                }
-            )
+        ) {
+            MapContent(
+                cardsJson = cardsJson,
+                circleJson = circleJson,
+                locationState = locationState,
+                cameraState = cameraState,
+                onPointClick = { clickedId ->
+                    // On nettoie les éventuels guillemets du JSON et on cherche l'ID
+                    val cleanId = clickedId.replace("\"", "")
+                    val found = cards.find { it.id == cleanId }
 
-            // LIEUX PRECIS --> rouge
-            val sourceLieux = rememberGeoJsonSource(
-                data = GeoJsonData.JsonString(lieuxJson)
-            )
-            CircleLayer(
-                id = "lieux",
-                source = sourceLieux,
-                radius = const(7.dp),
-                color = const(Color.Red),
-                // Onclick pour get les infos du points
-                onClick = { features ->
-                    val props = features.firstOrNull()?.properties
-                    if (props != null) {
-                        selectedName  = props.get("personName")?.toString()?: "?"
-                        selectedPlace = props.get("placeName")?.toString()?: "?"
-                        selectedType  = props.get("type")?.toString()?: "?"
+                    if (found != null) {
+                        selectedCard = found
                         showSheet = true
-                        ClickResult.Consume
                     } else {
-                        ClickResult.Pass
+                        Log.e("MapClick", "ID inconnu : $cleanId")
                     }
+                },
+                onUserPuckClick = {
+                    // TODO : afficher stats joueur car l'autre était nul
+                    showUserStats = true
+                    // Action optionnelle au clic sur le joueur
                 }
             )
-
-            val circleSource = rememberGeoJsonSource(
-                data = GeoJsonData.JsonString(circleJson)
-            )
-            // Layer du contour, hitbox user
-            LineLayer(
-                id = "hitBox",
-                source = circleSource,
-                color = const(Color.Blue),
-            )
-            // crach sur emulateur si pas de position set !!
-            if (locationState.location != null){
-                LocationPuck(
-                    idPrefix = "user",
-                    locationState = locationState,
-                    cameraState = cameraState,
-                    onClick = {
-                        selectedName = "John"
-                        selectedPlace = "A faire get gps"
-                        selectedType = "Stats joueur"
-                        showSheet = true
-                    }
-                )
-            }
-            else{
-                println("Pas de signal GPS ou indisponible")
-            }
         }
 
-        // Overlay stats en haut de la map
+        // Loader
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.align(Alignment.Center),
+                color = Color.Blue
+            )
+        }
+
+        // Overlay stats en haut
         StatsOverlay(
-            countZones = countZones,
-            countLieux = countLieux,
-            modifier = Modifier.padding(top = 12.dp)
+            countCards = cards.size,
+            isLoading = isLoading,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(16.dp)
         )
 
-        // Bouton capture
+        // Bouton capture (centre bas)
         Button(
-            onClick = { showCapture = true },
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 80.dp)
+            onClick = { showCaptureList = true },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 80.dp)
         ) {
-            Text("Capturer", color = Color.White, fontSize = 16.sp)
+            Text("Proximité (${cards.size})", color = Color.White, fontSize = 16.sp)
         }
 
-        // Bouton reset debug etat carte
+        // Bouton refresh
         Button(
-            modifier = Modifier.align(Alignment.BottomStart).padding(bottom = 80.dp),
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(bottom = 80.dp),
             onClick = {
-                scope.launch {
-                    repo.resetAllCatch()
-                    cards = repo.getPlaceCardsAroundGps(userLat, userLon)
-                    countZones = cards.count { it.zone }
-                    countLieux = cards.count { !it.zone }
-                }
-            },
+                scope.launch { refreshCards(userLat, userLon) }
+            }
         ) {
-            Text("Reset", color = Color.White)
+            Text("Refresh", color = Color.White)
         }
     }
-}
+    // Stats joueur
+    // TODO Vrai stats du joueur /me en wip
+    if (showUserStats) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showUserStats = false },
+            confirmButton = {
+                Button(onClick = { showUserStats = false }) { Text("OK") }
+            },
+            title = { Text("Profil de $userId") },
+            text = {
+                Column {
+                    Text("Captures locales : ${cards.size}") // Juste pour afficher un truc
+                    Text("Position : $userLat, $userLon")
+                }
+            }
+        )
+    }
 
-// Liste des jeux disponibles
-enum class MiniGame { SHAKE_TREE, BOMB_DEFUSE, HIDE_BLOW, SIGNAL_FINDER}
+    // MODALS (BottomSheet)
 
-// Score minimum pour gagner la carte selon le jeu
-fun scoreMinimum(game: MiniGame): Int = when (game) {
-    MiniGame.SHAKE_TREE -> 0
-    MiniGame.BOMB_DEFUSE-> 1
-    MiniGame.HIDE_BLOW->1
-    MiniGame.SIGNAL_FINDER->1
-    // TODO RAJOUTER les autres jeux apres
-}
+    // Info d'un point cliqué sur la carte
+    if (showSheet && selectedCard != null) {
+        InfoPointSheet(
+            card = selectedCard!!,
+            onDismiss = { showSheet = false },
+            onCaptureClick = {
+                currentGame = pickRandomGame()
+                cardToCapture = selectedCard
+                showSheet = false
+            }
+        )
+    }
 
-// Sélection aléatoire parmi les jeux dispo
-fun pickRandomGame(): MiniGame = MiniGame.entries.random()
-// Stats lieux & zone
-@Composable
-fun StatsOverlay(
-    countZones: Int,
-    countLieux: Int,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier
-            .background(
-                color = Color.Black.copy(alpha = 0.65f),
-                shape = RoundedCornerShape(12.dp)
-            )
-            .padding(horizontal = 14.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        StatOrganisation(count = countZones, label = "zones")
-        StatOrganisation(count = countLieux, label = "lieux")
+    // Liste des cartes capturables (bouton central)
+    if (showCaptureList) {
+        CaptureBottom(
+            userLat = userLat,
+            userLon = userLon,
+            cards = cards,
+            onDismiss = { showCaptureList = false },
+            onCaptureClick = { card ->
+                currentGame = pickRandomGame()
+                cardToCapture = card
+                showCaptureList = false
+            }
+        )
     }
 }
-@Composable
-fun StatOrganisation(count: Int, label: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = "$count", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
-        Text(text = label, fontSize = 10.sp, color = Color.LightGray)
-    }
-}
 
-// A run sur le telephone pas sur preview !
-// redemarre le telephone si bug
 @Preview
 @Composable
 fun TestMap(){
