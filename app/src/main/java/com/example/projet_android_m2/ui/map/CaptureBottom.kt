@@ -21,22 +21,34 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.projet_android_m2.data.NearCard
+import com.example.projet_android_m2.data.db.PlaceCard
+import kotlin.math.abs
 
-// Distance max en km pour qu'une carte soit capturable
-private const val HITBOX_KM = 0.5
+private const val HITBOX_LIEU = 0.05 // 0.05 ~ 5km, variable globale à centraliser qql part
+private const val HITBOX_ZONE = 0.05
+private const val HITBOX_KM   = 5.0   // Seuil en km pour les NearCard (API)
 
+// Calcul distance simple en degrés
+// Retourne true si la carte est capturable depuis la position user
+fun estCapturables(card: PlaceCard, userLat: Double, userLon: Double): Boolean {
+    val diffLat = abs(card.locationRandomLat - userLat)
+    val diffLon = abs(card.locationRandomLon - userLon)
+    val seuil = if (card.zone) HITBOX_ZONE else HITBOX_LIEU
+    return diffLat < seuil && diffLon < seuil
+}
+//TODO()Faire la logique de score minimum avec la DB pour enclencher le gg de la carte
+//  API Utilisée quand les cartes viennent du backend (NearCard)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CaptureBottom(
     userLat: Double,
     userLon: Double,
-    cards: List<NearCard>,
+    cards: List<NearCard>, // toutes les cartes chargées autour du joueur
     onDismiss: () -> Unit,
-    onCaptureClick: (NearCard) -> Unit
+    onCaptureClick: (NearCard) -> Unit // callback -> lance le mini-jeu
 ) {
     val sheetState = rememberModalBottomSheetState()
-
-    // L'API retourne déjà distance_km, on filtre directement
+    // L'API retourne déjà distance_km on filtre directement
     val capturable = cards.filter { it.distance_km <= HITBOX_KM }
 
     ModalBottomSheet(
@@ -112,4 +124,36 @@ fun CaptureCardItem(
             Text("Attraper !", color = Color.White)
         }
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun TestCaptureBottom() {
+    val listCards = listOf(
+        NearCard(
+            id = "101",
+            wikidata_id = "Q535",
+            person_name = "Victor Hugo",
+            lat = 48.857,
+            lon = 2.353,
+            power = 42,
+            distance_km = 0.3
+        ),
+        NearCard(
+            id = "202",
+            wikidata_id = "Q517",
+            person_name = "Napoléon Bonaparte",
+            lat = 48.86,
+            lon = 2.36,
+            power = 78,
+            distance_km = 1.2
+        )
+    )
+    CaptureBottom(
+        userLat = 48.857,
+        userLon = 2.353,
+        cards = listCards,
+        onDismiss = {},
+        onCaptureClick = {}
+    )
 }

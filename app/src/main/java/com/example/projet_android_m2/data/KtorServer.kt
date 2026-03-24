@@ -38,10 +38,9 @@ data class AuthResponse(
 )
 
 class KtorServer {
-    // internal : accessible depuis les fichiers d'extension du mm module
-    internal val urlServer = "https://ktor-server-forandroidapp.onrender.com"
+    // internal : accessible depuis les fichiers d'extension du même module
     //internal val urlServer = "http://10.0.2.2:8080"
-
+    internal val urlServer = "https://ktor-server-forandroidapp.onrender.com"
 
     internal val client = HttpClient(CIO) {
         install(ContentNegotiation) {

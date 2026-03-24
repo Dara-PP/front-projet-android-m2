@@ -1,9 +1,10 @@
-package com.example.projet_android_m2
+package com.example.projet_android_m2.data.db
 
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Query
 import androidx.room.Upsert
+import com.example.projet_android_m2.data.db.PlacePersonality
 import kotlinx.coroutines.flow.Flow
 
 @Dao
