@@ -31,6 +31,7 @@ fun RegisterPage(navController: NavController) {
     val scope = rememberCoroutineScope()
     var idInput by remember { mutableStateOf("") }
     var passwordInput by remember { mutableStateOf("") }
+    var emailInput by remember { mutableStateOf("") }
     val context = LocalContext.current
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -52,12 +53,18 @@ fun RegisterPage(navController: NavController) {
             singleLine = true
         )
         Spacer(modifier = Modifier.height(7.dp))
-
+        OutlinedTextField(
+            value = emailInput,
+            onValueChange = { emailInput = it },
+            label = { Text("email") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
         Button(
             onClick = {
                 scope.launch {
                     val server = KtorServer()
-                    val token = server.register(context, idInput, passwordInput)
+                    val token = server.register(context, idInput, passwordInput, email = emailInput)
                     // Switch sur le thread main pour le toast
                     withContext(Dispatchers.Main) {
                         if (token != null) {

@@ -32,43 +32,90 @@ fun LoadScreen(onLoadComplete: () -> Unit, modifier: Modifier = Modifier) {
     val repo = remember { PlaceRepository(context) }
     val scope = rememberCoroutineScope()
     var progress by remember { mutableStateOf(0) }
-    var statusMessage by remember { mutableStateOf("Initilisation") }
+    var statusMessage by remember { mutableStateOf("Initialisation") }
     var isLoading by remember { mutableStateOf(true) }
     var errorLoad by remember { mutableStateOf(false) }
+    var shouldComplete by remember { mutableStateOf(false) }
+
+    // Callback de complétion et laisser le temps au thread UI de finir le rendu du frame actuel
+    LaunchedEffect(shouldComplete) {
+        if (shouldComplete) {
+            delay(150)
+            onLoadComplete()
+        }
+    }
 
     LaunchedEffect(Unit) {
-        val count = repo.countDao()
-        if (count > 0) {
-            statusMessage = "Base de donnée déja chargé \n $count lieux dispnibles"
-            progress = 100
-            isLoading = false
-            val cardsCount = repo.countCardsDao()
-            println("Cards générées : $cardsCount")
-            if (cardsCount == 0L) {
-                statusMessage = "Génération des cartes en cours..."
-                repo.generatePlaceCards()
-            }
-            delay(2000)
-            onLoadComplete()
-        } else {
-            // Lancement du chargement
-            repo.jsonInsertRoomChunk(
-                chunkSize = 1000,
-                status = { current, total, message ->
-                    progress = current
-                    statusMessage = message
+        try {
+            val count = repo.countDao()
+            if (count > 0) {
+                statusMessage = "Base de données déjà chargée\n$count lieux disponibles"
+                progress = 100
+                isLoading = false
+
+                // Génération des cartes si pas encore faites
+                val cardsCount = repo.countCardsDao()
+                println("Cards générées : $cardsCount")
+                if (cardsCount == 0L) {
+                    statusMessage = "Génération des cartes en cours..."
+                    isLoading = true
+                    try {
+                        repo.generatePlaceCards(
+                            status = { p, msg ->
+                                progress = p
+                                statusMessage = msg
+                            }
+                        )
+                    } catch (e: Exception) {
+                        println("Erreur génération cartes : ${e.message}")
+                        statusMessage = "Erreur génération cartes : ${e.message}"
+                        errorLoad = true
+                        isLoading = false
+                        return@LaunchedEffect
+                    }
+                    isLoading = false
                 }
-            ).onSuccess { resultMessage ->
-                isLoading = false
-                statusMessage = resultMessage
-                delay(1500) // Pour voir le message sinon trop rapide
-                repo.generatePlaceCards()
-                onLoadComplete()
-            }.onFailure { error ->
-                isLoading = false
-                errorLoad = true
-                statusMessage = "Erreur ${error.message}"
+                delay(1500)
+                shouldComplete = true
+            } else {
+                // Lancement du chargement JSONL
+                repo.jsonInsertRoomChunk(
+                    chunkSize = 1000,
+                    status = { current, total, message ->
+                        progress = current
+                        statusMessage = message
+                    }
+                ).onSuccess { resultMessage ->
+                    isLoading = false
+                    statusMessage = resultMessage
+                    delay(1500)
+
+                    // Génération des cartes après le chargement
+                    statusMessage = "Génération des cartes..."
+                    isLoading = true
+                    try {
+                        repo.generatePlaceCards(
+                            status = { p, msg ->
+                                progress = p
+                                statusMessage = msg
+                            }
+                        )
+                    } catch (e: Exception) {
+                        println("Erreur génération cartes : ${e.message}")
+                    }
+                    isLoading = false
+                    shouldComplete = true
+                }.onFailure { error ->
+                    isLoading = false
+                    errorLoad = true
+                    statusMessage = "Erreur ${error.message}"
+                }
             }
+        } catch (e: Exception) {
+            println("ERREUR LoadScreen : ${e.message}")
+            isLoading = false
+            errorLoad = true
+            statusMessage = "Erreur base de données : ${e.message}\nEssayez de réinstaller l'app"
         }
     }
 
@@ -104,17 +151,31 @@ fun LoadScreen(onLoadComplete: () -> Unit, modifier: Modifier = Modifier) {
                         errorLoad = false
                         isLoading = true
                         progress = 0
-                        scope.launch { repo.jsonInsertRoomChunk(
-                            chunkSize = 1000,
-                            status = {current, total, message ->
-                                progress = current
-                                statusMessage = message
-                            }
+                        scope.launch {
+                            try {
+                                statusMessage = "Nettoyage de la base..."
+                                repo.clearDao()
+                                delay(500)
+                            } catch (e: Exception) {}
+
+                            repo.jsonInsertRoomChunk(
+                                chunkSize = 1000,
+                                status = {current, total, message ->
+                                    progress = current
+                                    statusMessage = message
+                                }
                             ).onSuccess {
                                 isLoading = false
-                                repo.generatePlaceCards()
-                                kotlinx.coroutines.delay(1500)
-                                onLoadComplete()
+                                try {
+                                    repo.generatePlaceCards(
+                                        status = { p, msg ->
+                                            progress = p
+                                            statusMessage = msg
+                                        }
+                                    )
+                                } catch (_: Exception) {}
+                                delay(1500)
+                                shouldComplete = true
                             }.onFailure { error ->
                                 isLoading = false
                                 errorLoad = true
@@ -126,9 +187,11 @@ fun LoadScreen(onLoadComplete: () -> Unit, modifier: Modifier = Modifier) {
                 ) {
                     Text("Réessayer")
                 }
-            } else if (progress == 100){
-                Button(onClick = onLoadComplete,
-                    modifier = Modifier.fillMaxWidth()) {
+            } else if (progress == 100) {
+                Button(
+                    onClick = { shouldComplete = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Text("Continuer")
                 }
             }

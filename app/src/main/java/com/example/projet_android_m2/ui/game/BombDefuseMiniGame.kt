@@ -24,42 +24,36 @@ import kotlin.random.Random
 
 @Composable
 fun BombDefuseMiniGame(
-    onSuccess: () -> Unit,
-    onFail: () -> Unit
+    onGameFinished: (score: Int) -> Unit // 1 = succès, 0 = échec
 ) {
     val context = LocalContext.current
     val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
     val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
 
-    // Position du joueur
-    var playerX by remember { mutableStateOf(500f) }
+    val screenWidth = LocalContext.current.resources.displayMetrics.widthPixels.toFloat()
+    var playerX by remember { mutableStateOf(screenWidth / 2) }
     val playerY = 1500f
 
-    // Bombes
     var bombs by remember { mutableStateOf(listOf<Bomb>()) }
-
-    // Phase du mini-jeu
     var phase by remember { mutableStateOf(1) }
-
-    // Temps survie et stabilité
     var survivalTime by remember { mutableStateOf(0f) }
     var stableTime by remember { mutableStateOf(0f) }
 
-    // Accéléromètre
     var accelX by remember { mutableStateOf(0f) }
     var accelY by remember { mutableStateOf(0f) }
 
-    // Sensor Listener
+    // Liste des bombes en explosion (pour l’effet visuel)
+    var explodingBombs by remember { mutableStateOf(listOf<Explosion>()) }
+
+    // Capteurs
     DisposableEffect(Unit) {
         val listener = object : SensorEventListener {
             override fun onSensorChanged(event: SensorEvent) {
                 accelX = event.values[0]
                 accelY = event.values[1]
-
-                // Déplacer le joueur selon inclinaison
                 playerX -= accelX * 20
-                playerX = playerX.coerceIn(0f, 1000f) // limite écran
+                playerX = playerX.coerceIn(0f, screenWidth)
             }
             override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
         }
@@ -72,60 +66,64 @@ fun BombDefuseMiniGame(
         while (true) {
             delay(50)
 
+            // Phase 1: éviter bombes
             if (phase == 1) {
-                // Phase éviter les bombes
                 survivalTime += 0.05f
+                bombs = bombs.map { it.copy(y = it.y + it.speed) }
 
-                // Descente des bombes
-                bombs = bombs.map { it.copy(y = it.y + 25) }
-
-                // Spawn aléatoire des bombes
                 if (Random.nextFloat() < 0.1f) {
-                    bombs = bombs + Bomb(x = Random.nextInt(0, 1000).toFloat(), y = 0f)
+                    val newX = Random.nextInt(0, screenWidth.toInt()).toFloat()
+                    if (bombs.none { abs(it.x - newX) < 100 }) {
+                        bombs = bombs + Bomb(
+                            x = newX,
+                            y = 0f,
+                            speed = Random.nextInt(15, 30).toFloat(),
+                            radius = Random.nextInt(20, 40).toFloat()
+                        )
+                    }
                 }
 
+                val remainingBombs = mutableListOf<Bomb>()
                 bombs.forEach {
-                    // Distance entre bombe et joueur
                     val dx = abs(it.x - playerX)
                     val dy = abs(it.y - playerY)
                     val distance = sqrt(dx * dx + dy * dy)
 
-                    // Vibration si proche (<150 px)
                     if (distance < 150) {
+                        val amplitude = ((150 - distance) / 150 * 255).toInt().coerceIn(1, 255)
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            vibrator.vibrate(
-                                VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE)
-                            )
+                            vibrator.vibrate(VibrationEffect.createOneShot(100, amplitude))
                         } else {
                             @Suppress("DEPRECATION")
                             vibrator.vibrate(100)
                         }
                     }
 
-                    // Collision
-                    if (dx < 80 && dy < 80) {
-                        onFail()
+                    // Collision => mini-jeu échoué
+                    if (dx < it.radius + 40 && dy < it.radius + 40) {
+                        // Ajouter explosion
+                        explodingBombs = explodingBombs + Explosion(it.x, it.y)
+                        onGameFinished(0)
+                    } else {
+                        remainingBombs.add(it)
                     }
                 }
+                bombs = remainingBombs
 
-                // Si survie ≥ 5s → phase 2
                 if (survivalTime >= 5f) {
                     phase = 2
                     bombs = emptyList()
                 }
 
             } else {
-                // Phase garder stable
-                if (abs(accelX) < 1 && abs(accelY) < 1) {
-                    stableTime += 0.05f
-                } else {
-                    stableTime = 0f
-                }
-
-                if (stableTime >= 3f) {
-                    onSuccess()
-                }
+                val magnitude = sqrt(accelX * accelX + accelY * accelY)
+                if (magnitude < 1f) stableTime += 0.05f else stableTime = 0f
+                if (stableTime >= 3f) onGameFinished(1) // succès
             }
+
+            // Mise à jour des explosions
+            explodingBombs = explodingBombs.map { it.copy(frame = it.frame + 1) }
+                .filter { it.frame < 6 } // explosion dure 6 frames
         }
     }
 
@@ -140,9 +138,7 @@ fun BombDefuseMiniGame(
         if (phase == 2) {
             LinearProgressIndicator(
                 progress = stableTime / 3f,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
+                modifier = Modifier.fillMaxWidth().padding(16.dp)
             )
         }
 
@@ -158,7 +154,17 @@ fun BombDefuseMiniGame(
             bombs.forEach {
                 drawCircle(
                     color = Color.Red,
-                    radius = 30f,
+                    radius = it.radius,
+                    center = Offset(it.x, it.y)
+                )
+            }
+
+            // Explosions animées
+            explodingBombs.forEach {
+                val alpha = 1f - it.frame / 6f
+                drawCircle(
+                    color = Color.Yellow.copy(alpha = alpha),
+                    radius = 50f + it.frame * 10,
                     center = Offset(it.x, it.y)
                 )
             }
@@ -168,5 +174,13 @@ fun BombDefuseMiniGame(
 
 data class Bomb(
     val x: Float,
-    val y: Float
+    val y: Float,
+    val speed: Float = 20f,
+    val radius: Float = 30f
+)
+
+data class Explosion(
+    val x: Float,
+    val y: Float,
+    val frame: Int = 0
 )

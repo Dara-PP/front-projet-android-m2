@@ -1,9 +1,11 @@
 package com.example.projet_android_m2.data
 
 import android.content.Context
-import com.example.projet_android_m2.PlaceCard
-import com.example.projet_android_m2.PlaceDatabase
-import com.example.projet_android_m2.PlacePersonality
+import com.example.projet_android_m2.data.db.CardHistory
+import com.example.projet_android_m2.data.db.CardHistoryAction
+import com.example.projet_android_m2.data.db.PlaceCard
+import com.example.projet_android_m2.data.db.PlaceDatabase
+import com.example.projet_android_m2.data.db.PlacePersonality
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -17,6 +19,7 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import kotlin.collections.mutableListOf
 import kotlin.random.Random
+import android.util.Log;
 
 @Serializable
 data class Payload(
@@ -55,7 +58,7 @@ sealed class Either {
 class PlaceRepository(val context : Context) {
     val dao = PlaceDatabase.getInstance(context).placeDao()
     val placeCardDao = PlaceDatabase.getInstance(context).placeCardDao()
-
+    val cardHistoryDao = PlaceDatabase.getInstance(context).cardHistoryDao()
     // check securite bug
     val json = Json { ignoreUnknownKeys = true }
     // Function pour call les Dao
@@ -76,6 +79,32 @@ class PlaceRepository(val context : Context) {
     }
     suspend fun getPerson(offset: Int, size : Int): Flow<List<PlacePersonality>> {
         return dao.getPerson(offset, size)
+    }
+
+    //TODO backend ktorserver ajouter un POST /catch (cardId, userId, score)...
+    suspend fun catchCard(cardId: Long, userId: String) = withContext(Dispatchers.IO) {
+        placeCardDao.catchCard(cardId, userId)
+        cardHistoryDao.insert(CardHistory(cardId = cardId, userId = userId, action = CardHistoryAction.CAPTURED.value))
+        println("Carte $cardId attrapée !")
+    }
+    suspend fun getCardHistory(cardId: Long): List<CardHistory> = withContext(Dispatchers.IO) {
+        cardHistoryDao.getHistoryForCard(cardId)
+    }
+    // TODO SYNCH avec DB local good
+    suspend fun transferCard(cardId: Long, toUserId: String) = withContext(Dispatchers.IO) {
+        placeCardDao.catchCard(cardId, toUserId)  // met à jour user id de la carte
+        cardHistoryDao.insert(
+            CardHistory(cardId = cardId, userId = toUserId, action = CardHistoryAction.TRADED.value)
+        )
+        println("Carte $cardId transférée à $toUserId")
+    }
+
+    suspend fun resetAllCatch() = withContext(Dispatchers.IO) {
+        placeCardDao.resetAllCatch()
+        println("Etats des cartes remises à 0")
+    }
+    suspend fun getCaughtCards(userId: String): List<PlaceCard> = withContext(Dispatchers.IO) {
+        placeCardDao.getUsersCards(userId)
     }
     //TODO: Relation avec le backend pas full local
     suspend fun generatePlaceCards(
@@ -162,7 +191,7 @@ class PlaceRepository(val context : Context) {
         centerLat: Double,
         centerLon: Double,
     ): List<PlaceCard> = withContext(Dispatchers.IO) {
-
+        val now = System.currentTimeMillis()
         val deltaZone = 20.0 / 111.0 // 20km
         val deltaLieu = 0.5 / 111.0 // 500m
 
@@ -170,14 +199,16 @@ class PlaceRepository(val context : Context) {
             minLat = centerLat - deltaZone,
             maxLat = centerLat + deltaZone,
             minLon = centerLon - deltaZone,
-            maxLon = centerLon + deltaZone
+            maxLon = centerLon + deltaZone,
+            now = now
         )
 
         val lieux = placeCardDao.getLieuCardsAround(
             minLat = centerLat - deltaLieu,
             maxLat = centerLat + deltaLieu,
             minLon = centerLon - deltaLieu,
-            maxLon = centerLon + deltaLieu
+            maxLon = centerLon + deltaLieu,
+            now = now
         )
 
         zones + lieux
