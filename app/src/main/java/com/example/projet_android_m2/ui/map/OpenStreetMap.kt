@@ -43,6 +43,7 @@ import org.maplibre.compose.style.BaseStyle
 import kotlin.math.abs
 import kotlin.math.sqrt
 import kotlin.time.Duration.Companion.milliseconds
+import org.maplibre.spatialk.geojson.Position
 
 private const val RANGE_KM = 5.0
 
