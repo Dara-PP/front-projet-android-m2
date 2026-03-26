@@ -2,6 +2,7 @@ package com.example.projet_android_m2
 
 import android.Manifest
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -35,6 +36,7 @@ import com.example.projet_android_m2.ui.minigames.BombDefuseMiniGame
 
 
 class MainActivity : ComponentActivity() {
+    private val airplaneModeReceiver = AirplaneModeReceiver()
     @RequiresApi(Build.VERSION_CODES.N)
     private val locationPermissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -57,6 +59,8 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     @RequiresApi(Build.VERSION_CODES.N)
     override fun onCreate(savedInstanceState: Bundle?) {
+        val filter = IntentFilter(Intent.ACTION_AIRPLANE_MODE_CHANGED)
+        registerReceiver(airplaneModeReceiver, filter)
         val musicIntent = Intent(this, MusicService::class.java)
         startService(musicIntent)
         super.onCreate(savedInstanceState)
