@@ -55,8 +55,8 @@ class SignalGame(
         stopScheduled = false
         signalStrength = 0
         timeLeft      = maxTime
-        targetAzimuth = Random.nextFloat() * 360f
-        targetPitch   = -30f + Random.nextFloat() * 60f
+        targetAzimuth = Random.nextFloat() * 360f - 180f  // entre -180° et 180°
+        targetPitch   = -45f + Random.nextFloat() * 30f - 15f  // entre -75° et -30°
 
         accelerometer?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
         magnetometer?.let  { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
