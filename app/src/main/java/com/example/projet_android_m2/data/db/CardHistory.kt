@@ -10,7 +10,8 @@ enum class CardHistoryAction(val value: Int) {
 @Entity(tableName = "card_history")
 data class CardHistory(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val cardId: Long,
+    val cardId: String,
+    val personName: String? = null,
     val userId: String,
     val action: Int,
     val timestamp: Long = System.currentTimeMillis()
