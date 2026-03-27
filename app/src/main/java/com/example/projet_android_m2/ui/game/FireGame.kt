@@ -122,7 +122,7 @@ fun FireGame(onGameFinished: (Int) -> Unit = {}) {
             imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(context), BrightnessAnalyzer { b ->
                 brightness = b
                 isCovered = b < 40.0
-                println("DEBUG luminosité=${"%.1f".format(b)} | isCovered=$isCovered")
+                //println("DEBUG luminosité=${"%.1f".format(b)} | isCovered=$isCovered")
             })
             try {
                 cameraProvider.unbindAll()
