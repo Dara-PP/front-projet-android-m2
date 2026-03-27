@@ -6,7 +6,6 @@ import android.graphics.BitmapFactory
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.view.PreviewView
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -36,6 +35,7 @@ import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import kotlinx.coroutines.delay
 import com.example.projet_android_m2.R
+import androidx.camera.view.PreviewView
 
 
 
@@ -256,9 +256,10 @@ private fun startCamera(
     val future = ProcessCameraProvider.getInstance(context)
     future.addListener({
         val provider = future.get()
-        val preview  = Preview.Builder().build()//.also {
-            //it.surfaceProvider = previewView.surfaceProvider
-        //}
+        val preview = Preview.Builder().build()
+        previewView.implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+        preview.setSurfaceProvider(previewView.surfaceProvider)
+
         try {
             provider.unbindAll()
             provider.bindToLifecycle(
