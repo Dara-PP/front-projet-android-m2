@@ -18,7 +18,8 @@ import androidx.compose.ui.unit.sp
 fun InfoPointSheet(
     card: NearCard,
     onDismiss: () -> Unit,
-    onCaptureClick: () -> Unit
+    onCaptureClick: () -> Unit,
+    onInstantCapture: () -> Unit
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -42,6 +43,15 @@ fun InfoPointSheet(
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3))
             ) {
                 Text("Tenter la capture", color = Color.White)
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            // DEBUG temp
+            Button(
+                onClick = onInstantCapture,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF5722))
+            ) {
+                Text("DEBUG: INSTANT CAPTURE", color = Color.White)
             }
         }
     }

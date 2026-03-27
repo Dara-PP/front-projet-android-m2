@@ -21,23 +21,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.projet_android_m2.data.NearCard
-import com.example.projet_android_m2.data.db.PlaceCard
-import kotlin.math.abs
 import androidx.compose.ui.tooling.preview.Preview
 
-private const val HITBOX_LIEU = 0.05 // 0.05 ~ 5km, variable globale à centraliser qql part
-private const val HITBOX_ZONE = 0.05
-private const val HITBOX_KM   = 5.0   // Seuil en km pour les NearCard (API)
+private const val HITBOX_KM = 5.0   // Seuil en km pour les NearCard (API)
 
-// Calcul distance simple en degrés
-// Retourne true si la carte est capturable depuis la position user
-fun estCapturables(card: PlaceCard, userLat: Double, userLon: Double): Boolean {
-    val diffLat = abs(card.locationRandomLat - userLat)
-    val diffLon = abs(card.locationRandomLon - userLon)
-    val seuil = if (card.zone) HITBOX_ZONE else HITBOX_LIEU
-    return diffLat < seuil && diffLon < seuil
-}
-//TODO()Faire la logique de score minimum avec la DB pour enclencher le gg de la carte
 //  API Utilisée quand les cartes viennent du backend (NearCard)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
