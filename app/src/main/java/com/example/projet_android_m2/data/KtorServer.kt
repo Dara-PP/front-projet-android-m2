@@ -84,10 +84,9 @@ class KtorServer {
         }
     }
 
-    // TODO Check le server 404 server erreur register marche pas
     suspend fun register(context: Context, username: String, mdp: String, email: String): String? {
         return try {
-            val response: HttpResponse = client.post("$urlServer/users") {
+            val response: HttpResponse = client.post("$urlServer/register") {
                 contentType(ContentType.Application.Json)
                 setBody(RegisterUser(username = username, password = mdp, email = email))
             }

@@ -38,9 +38,6 @@ import com.example.projet_android_m2.R
 import androidx.camera.view.PreviewView
 
 
-
-
-
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun SignalGameScreen(
@@ -321,10 +318,7 @@ fun PanoramiqueMap(azimuth: Float) {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Animation de la carte débloquée
-// ─────────────────────────────────────────────────────────────────────────────
-
 @Composable
 fun CarteAvecAnimation() {
     var isVisible by remember { mutableStateOf(true) }
