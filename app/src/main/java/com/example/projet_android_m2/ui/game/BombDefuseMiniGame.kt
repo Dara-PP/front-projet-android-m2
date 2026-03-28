@@ -1,41 +1,41 @@
 package com.example.projet_android_m2.ui.minigames
 
 import android.content.Context
-import android.hardware.Sensor
-import android.hardware.SensorEvent
-import android.hardware.SensorEventListener
-import android.hardware.SensorManager
-import android.os.Build
-import android.os.VibrationEffect
-import android.os.Vibrator
+import android.hardware.*
+import android.os.*
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
+import androidx.compose.ui.*
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
-import kotlin.math.abs
-import kotlin.math.sqrt
+import kotlin.math.*
 import kotlin.random.Random
 
 @Composable
 fun BombDefuseMiniGame(
-    onGameFinished: (score: Int) -> Unit // 1 = succès, 0 = échec
+    onGameFinished: (Int) -> Unit
 ) {
     val context = LocalContext.current
     val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
     val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
 
-    val screenWidth = LocalContext.current.resources.displayMetrics.widthPixels.toFloat()
+    val screenWidth = context.resources.displayMetrics.widthPixels.toFloat()
+
     var playerX by remember { mutableStateOf(screenWidth / 2) }
     val playerY = 1500f
 
     var bombs by remember { mutableStateOf(listOf<Bomb>()) }
+    var explosions by remember { mutableStateOf(listOf<Explosion>()) }
+
     var phase by remember { mutableStateOf(1) }
     var survivalTime by remember { mutableStateOf(0f) }
     var stableTime by remember { mutableStateOf(0f) }
@@ -43,144 +43,238 @@ fun BombDefuseMiniGame(
     var accelX by remember { mutableStateOf(0f) }
     var accelY by remember { mutableStateOf(0f) }
 
-    // Liste des bombes en explosion (pour l’effet visuel)
-    var explodingBombs by remember { mutableStateOf(listOf<Explosion>()) }
+    var lastX by remember { mutableStateOf(0f) }
+    var lastY by remember { mutableStateOf(0f) }
 
-    // Capteurs
+    var gameState by remember { mutableStateOf(GameState.INTRO) }
+
+    fun vibrateStrong() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vibrator.vibrate(
+                VibrationEffect.createWaveform(longArrayOf(0, 100, 50, 200), -1)
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            vibrator.vibrate(300)
+        }
+    }
+
+    fun startGame() {
+        playerX = screenWidth / 2
+        bombs = emptyList()
+        explosions = emptyList()
+        phase = 1
+        survivalTime = 0f
+        stableTime = 0f
+        gameState = GameState.PLAYING
+    }
+
+    // capteurs
     DisposableEffect(Unit) {
         val listener = object : SensorEventListener {
             override fun onSensorChanged(event: SensorEvent) {
                 accelX = event.values[0]
                 accelY = event.values[1]
-                playerX -= accelX * 20
-                playerX = playerX.coerceIn(0f, screenWidth)
+
+                if (gameState == GameState.PLAYING) {
+                    playerX -= accelX * 20
+                    playerX = playerX.coerceIn(0f, screenWidth)
+                }
             }
+
             override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
         }
+
         sensorManager.registerListener(listener, accelerometer, SensorManager.SENSOR_DELAY_GAME)
         onDispose { sensorManager.unregisterListener(listener) }
     }
 
-    // Loop du jeu
-    LaunchedEffect(Unit) {
-        while (true) {
+    // GAME LOOP
+    LaunchedEffect(gameState) {
+        if (gameState != GameState.PLAYING) return@LaunchedEffect
+
+        while (gameState == GameState.PLAYING) {
             delay(50)
 
-            // Phase 1: éviter bombes
             if (phase == 1) {
                 survivalTime += 0.05f
+
                 bombs = bombs.map { it.copy(y = it.y + it.speed) }
 
                 if (Random.nextFloat() < 0.1f) {
                     val newX = Random.nextInt(0, screenWidth.toInt()).toFloat()
-                    if (bombs.none { abs(it.x - newX) < 100 }) {
-                        bombs = bombs + Bomb(
-                            x = newX,
-                            y = 0f,
-                            speed = Random.nextInt(15, 30).toFloat(),
-                            radius = Random.nextInt(20, 40).toFloat()
-                        )
-                    }
+                    bombs = bombs + Bomb(x = newX, y = 0f)
                 }
 
-                val remainingBombs = mutableListOf<Bomb>()
                 bombs.forEach {
                     val dx = abs(it.x - playerX)
                     val dy = abs(it.y - playerY)
-                    val distance = sqrt(dx * dx + dy * dy)
 
-                    if (distance < 150) {
-                        val amplitude = ((150 - distance) / 150 * 255).toInt().coerceIn(1, 255)
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            vibrator.vibrate(VibrationEffect.createOneShot(100, amplitude))
-                        } else {
-                            @Suppress("DEPRECATION")
-                            vibrator.vibrate(100)
-                        }
-                    }
-
-                    // Collision => mini-jeu échoué
                     if (dx < it.radius + 40 && dy < it.radius + 40) {
-                        // Ajouter explosion
-                        explodingBombs = explodingBombs + Explosion(it.x, it.y)
+                        explosions = explosions + Explosion(playerX, playerY)
+                        vibrateStrong()
+                        gameState = GameState.LOSE
                         onGameFinished(0)
-                    } else {
-                        remainingBombs.add(it)
                     }
                 }
-                bombs = remainingBombs
 
-                if (survivalTime >= 5f) {
+                if (survivalTime >= 20f) {
                     phase = 2
                     bombs = emptyList()
                 }
 
             } else {
-                val magnitude = sqrt(accelX * accelX + accelY * accelY)
-                if (magnitude < 1f) stableTime += 0.05f else stableTime = 0f
-                if (stableTime >= 3f) onGameFinished(1) // succès
+                val movement = abs(accelX - lastX) + abs(accelY - lastY)
+
+                lastX = accelX
+                lastY = accelY
+
+                if (movement < 0.5f) stableTime += 0.05f
+                else stableTime = 0f
+
+                if (stableTime >= 10f) {
+                    vibrateStrong()
+                    gameState = GameState.WIN
+                    onGameFinished(1)
+                }
             }
 
-            // Mise à jour des explosions
-            explodingBombs = explodingBombs.map { it.copy(frame = it.frame + 1) }
-                .filter { it.frame < 6 } // explosion dure 6 frames
+            explosions = explosions
+                .map { it.copy(radius = it.radius + 12f) }
+                .filter { it.radius < 200f }
         }
     }
 
-    // UI Compose
-    Column(modifier = Modifier.fillMaxSize()) {
-        Text(
-            text = if (phase == 1) "Évitez les bombes !" else "Gardez le téléphone stable !",
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(16.dp)
-        )
+    //  UI
+    Box(Modifier.fillMaxSize()) {
 
-        if (phase == 2) {
-            LinearProgressIndicator(
-                progress = stableTime / 3f,
-                modifier = Modifier.fillMaxWidth().padding(16.dp)
-            )
-        }
+        when (gameState) {
 
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            // Joueur
-            drawCircle(
-                color = Color.Blue,
-                radius = 40f,
-                center = Offset(playerX, playerY)
-            )
-
-            // Bombes
-            bombs.forEach {
-                drawCircle(
-                    color = Color.Red,
-                    radius = it.radius,
-                    center = Offset(it.x, it.y)
-                )
+            GameState.INTRO -> {
+                IntroScreen(onStart = { startGame() })
             }
 
-            // Explosions animées
-            explodingBombs.forEach {
-                val alpha = 1f - it.frame / 6f
-                drawCircle(
-                    color = Color.Yellow.copy(alpha = alpha),
-                    radius = 50f + it.frame * 10,
-                    center = Offset(it.x, it.y)
-                )
+            GameState.PLAYING -> {
+                Column {
+                    Text(
+                        text = if (phase == 1)
+                            " Survis 20s (${20 - survivalTime.toInt()}s)"
+                        else
+                            " Stable 10s (${10 - stableTime.toInt()}s)",
+                        modifier = Modifier.padding(16.dp)
+                    )
+
+                    Canvas(Modifier.fillMaxSize()) {
+
+                        drawContext.canvas.nativeCanvas.drawText(
+                            "😎",
+                            playerX,
+                            playerY,
+                            android.graphics.Paint().apply {
+                                textSize = 80f
+                                textAlign = android.graphics.Paint.Align.CENTER
+                            }
+                        )
+
+                        bombs.forEach {
+                            drawCircle(Color.Red, it.radius, Offset(it.x, it.y))
+                        }
+
+                        explosions.forEach {
+                            drawCircle(
+                                Color.Yellow.copy(alpha = 0.5f),
+                                it.radius,
+                                Offset(it.x, it.y)
+                            )
+                        }
+                    }
+                }
+            }
+
+            GameState.LOSE -> {
+                EndScreen(" BOOM !", Color.Red, { startGame() }, { onGameFinished(0) })
+            }
+
+            GameState.WIN -> {
+                EndScreen(" Désamorcé !", Color.Green, { startGame() }, { onGameFinished(1) })
             }
         }
     }
 }
 
+@Composable
+fun IntroScreen(onStart: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Transparent),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            "Bomb Defuse",
+            color = Color.White,
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(Modifier.height(20.dp))
+
+        Text(
+            "🎮 Instructions :\n\n" +
+                    "• Incline ton téléphone pour bouger \n" +
+                    "• Évite les bombes pendant 20 secondes \n" +
+                    "• Ensuite, reste IMMOBILE 10 secondes \n" ,
+            color = Color.Black,
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.padding(20.dp)
+        )
+
+        Spacer(Modifier.height(30.dp))
+
+        Button(onClick = onStart) {
+            Text("▶️ START")
+        }
+    }
+}
+
+@Composable
+fun EndScreen(
+    title: String,
+    color: Color,
+    onRetry: () -> Unit,
+    onExit: () -> Unit
+) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.8f)),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(title, color = color)
+
+        Spacer(Modifier.height(20.dp))
+
+        Button(onClick = onRetry) { Text("🔄 Rejouer") }
+        Spacer(Modifier.height(10.dp))
+        Button(onClick = onExit) { Text("🏠 Menu") }
+    }
+}
+
+enum class GameState {
+    INTRO, PLAYING, WIN, LOSE
+}
+
 data class Bomb(
     val x: Float,
     val y: Float,
-    val speed: Float = 20f,
+    val speed: Float = Random.nextInt(15, 30).toFloat(),
     val radius: Float = 30f
 )
 
 data class Explosion(
     val x: Float,
     val y: Float,
-    val frame: Int = 0
+    val radius: Float = 10f
 )
