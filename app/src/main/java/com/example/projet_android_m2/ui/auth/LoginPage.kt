@@ -12,9 +12,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.example.projet_android_m2.data.KtorServer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -28,24 +30,24 @@ fun LoginPage(navController: NavController) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    // 1. Un fond simple (couleur sombre style "Jeu Vidéo")
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF2C3E50)), // Bleu nuit très simple
+            .background(Color(0xFF2C3E50)),
         contentAlignment = Alignment.Center
     ) {
 
-        // 2. On met le formulaire dans une "Card" (une carte avec une ombre)
+        // 2. On met le formulaire dans une Card
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(24.dp), // Marge sur les côtés
             shape = RoundedCornerShape(16.dp), // Bords arrondis
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp) // Petite ombre natif
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp) // Petite ombre
         ) {
 
-            // 3. Le contenu de la carte (vertical)
+            // 3. Le contenu
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -66,7 +68,7 @@ fun LoginPage(navController: NavController) {
                 OutlinedTextField(
                     value = idInput,
                     onValueChange = { idInput = it },
-                    label = { Text("Nom de Dresseur") },
+                    label = { Text("Nom du collectionneur") },
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp), // Arrondit le champ de texte
                     modifier = Modifier.fillMaxWidth()
@@ -124,4 +126,10 @@ fun LoginPage(navController: NavController) {
             }
         }
     }
+}
+@Preview(showBackground = true)
+@Composable
+fun TestLoginPage() {
+    // rememberNavController() simule la navigation juste pour l'aperçu
+    LoginPage(navController = rememberNavController())
 }
