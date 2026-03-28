@@ -1,5 +1,5 @@
 [versions]
-agp = "9.0.1"
+agp = "9.0.0"
 kotlin = "2.2.10"
 coreKtx = "1.17.0"
 junit = "4.13.2"
@@ -17,6 +17,8 @@ runtime = "1.10.3"
 navigationCompose = "2.9.7"
 foundationLayout = "1.10.4"
 runtimeVersion = "1.10.5"
+accompanist = "0.34.0"
+remoteCreationCore = "1.0.0-alpha07"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -43,6 +45,8 @@ maplibre-compose = { module = "org.maplibre.compose:maplibre-compose", version =
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 androidx-compose-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayout" }
 androidx-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "runtimeVersion" }
+accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanist" }
+androidx-compose-remote-creation-core = { group = "androidx.compose.remote", name = "remote-creation-core", version.ref = "remoteCreationCore" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

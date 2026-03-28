@@ -1,19 +1,24 @@
 package com.example.projet_android_m2.ui
 
 import android.annotation.SuppressLint
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -22,24 +27,45 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.projet_android_m2.PlaceCard
+import com.example.projet_android_m2.data.KtorServer
 import com.example.projet_android_m2.data.PlaceRepository
+import com.example.projet_android_m2.data.db.CardHistory
+import com.example.projet_android_m2.data.db.CardHistoryAction
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun CardList(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val repo = remember { PlaceRepository(context) }
-    var userCards by remember { mutableStateOf<List<PlaceCard>>(emptyList()) }
+    val userId = remember { KtorServer().getUsername(context) ?: "" }
 
+    // Flow Room se met à jour automatiquement après sync ou capture
+    val ownedCards by repo.cardHistoryDao.getOwnedCardsFlow(userId).collectAsState(initial = emptyList())
+    var syncMessage by remember { mutableStateOf<String?>(null) }
+
+    // Sync automatique au premier chargement
     LaunchedEffect(Unit) {
-        userCards = repo.getCaughtCards()
+        repo.syncHistoryFromServer()
+            .onSuccess { count -> if (count > 0) syncMessage = "$count carte(s) synchronisée(s)" }
+            .onFailure { /* hors ligne on affiche ce qui est déjà en base */ }
     }
-    CardList(cards = userCards, modifier = modifier)
+
+    CardList(
+        cards = ownedCards,
+        repo = repo,
+        syncMessage = syncMessage,
+        modifier = modifier
+    )
 }
 
 @Composable
 fun CardList(
-    cards: List<PlaceCard> = emptyList(),
+    cards: List<CardHistory> = emptyList(),
+    repo: PlaceRepository? = null,
+    syncMessage: String? = null,
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
@@ -53,18 +79,23 @@ fun CardList(
             text = "${cards.size} carte(s) collectée(s)",
             fontSize = 13.sp,
             color = Color.Gray,
-            modifier = Modifier.padding(bottom = 16.dp)
+            modifier = Modifier.padding(bottom = 8.dp)
         )
+        syncMessage?.let {
+            Text(
+                text = it,
+                fontSize = 12.sp,
+                color = if (it.startsWith("Erreur")) Color.Red else Color(0xFF388E3C),
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
 
         if (cards.isEmpty()) {
-            Text(
-                text = "Aucune carte pour l'instant.",
-                color = Color.Gray
-            )
+            Text(text = "Aucune carte pour l'instant.", color = Color.Gray)
         } else {
             LazyColumn {
                 items(cards) { card ->
-                    CaughtCardItem(card = card)
+                    CaughtCardItem(card = card, repo = repo)
                 }
             }
         }
@@ -72,21 +103,53 @@ fun CardList(
 }
 
 @Composable
-fun CaughtCardItem(card: PlaceCard) {
-    val nom = card.personNameFr ?: card.personNameEn ?: "?"
-    val lieu = card.nameFr ?: card.nameEn ?: "?"
-    val type = if (card.zone) "Zone" else "Lieu"
+fun CaughtCardItem(card: CardHistory, repo: PlaceRepository? = null) {
+    val nom = card.personName ?: card.cardId
+    var expanded by remember { mutableStateOf(false) }
+    var history by remember { mutableStateOf<List<CardHistory>>(emptyList()) }
+    val scope = rememberCoroutineScope()
+    var transferUserId by remember { mutableStateOf("") }
 
     Card(
         modifier = Modifier
             .fillMaxSize()
-            .padding(vertical = 6.dp),
+            .padding(vertical = 6.dp)
+            .clickable {
+                expanded = !expanded
+                if (expanded && history.isEmpty() && repo != null)
+                    scope.launch { history = repo.cardHistoryDao.getHistoryForCard(card.cardId) }
+            },
         colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(text = nom, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            Text(text = lieu, fontSize = 14.sp, color = Color.DarkGray)
-            Text(text = type, fontSize = 12.sp, color = Color.Gray)
+            if (expanded) {
+                OutlinedTextField(
+                    value = transferUserId,
+                    onValueChange = { transferUserId = it },
+                    label = { Text("Donner à...") },
+                    singleLine = true
+                )
+                Button(onClick = { /* TODO: échange serveur */ }) {
+                    Text("Donner")
+                }
+                Text("Historique", fontSize = 11.sp, color = Color.Gray)
+                if (history.isEmpty()) {
+                    Text("Aucun événement.", fontSize = 11.sp, color = Color.LightGray)
+                } else {
+                    history.forEach { event ->
+                        val action = when (event.action) {
+                            CardHistoryAction.CAPTURED.value -> "Capturée"
+                            CardHistoryAction.TRADED.value -> "Échangée"
+                            CardHistoryAction.WON_BATTLE.value -> "Gagnée bataille"
+                            else -> "?"
+                        }
+                        val date = SimpleDateFormat("dd/MM HH:mm", Locale.FRENCH)
+                            .format(Date(event.timestamp))
+                        Text("$action — $date", fontSize = 11.sp, color = Color.DarkGray)
+                    }
+                }
+            }
         }
     }
 }
@@ -95,20 +158,8 @@ fun CaughtCardItem(card: PlaceCard) {
 @Composable
 fun TestListCard() {
     val listCards = listOf(
-        PlaceCard(
-            personId = 1L, personNameFr = "Victor Hugo", personNameEn = "Victor Hugo",
-            nameFr = "Maison de Victor Hugo", nameEn = "Victor Hugo's House",
-            locationLat = 48.854, locationLon = 2.362,
-            locationRandomLat = 48.855, locationRandomLon = 2.363,
-            zone = false, iscatch = true, id = 101L
-        ),
-        PlaceCard(
-            personId = 2L, personNameFr = "Marie Curie", personNameEn = "Marie Curie",
-            nameFr = "Institut Curie", nameEn = "Curie Institute",
-            locationLat = 48.844, locationLon = 2.341,
-            locationRandomLat = 48.845, locationRandomLon = 2.342,
-            zone = true, iscatch = true, id = 202L
-        )
+        CardHistory(cardId = "uuid-1", personName = "Victor Hugo", userId = "test", action = CardHistoryAction.CAPTURED.value),
+        CardHistory(cardId = "uuid-2", personName = "Marie Curie", userId = "test", action = CardHistoryAction.WON_BATTLE.value)
     )
     CardList(cards = listCards)
 }

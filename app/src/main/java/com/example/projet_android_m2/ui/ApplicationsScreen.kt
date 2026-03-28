@@ -19,7 +19,8 @@ import androidx.compose.ui.unit.sp
 fun ApplicationsScreen(
     onDavidAppClick: () -> Unit = {},
     onFrancoisAppClick: () -> Unit = {},
-    onDaraAppClick: () -> Unit = {}
+    onDaraAppClick: () -> Unit = {},
+    onFlorianAppClick: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier.Companion
@@ -44,6 +45,7 @@ fun ApplicationsScreen(
                         "David"    -> onDavidAppClick()
                         "François" -> onFrancoisAppClick()
                         "Dara" -> onDaraAppClick()
+                        "Florian" -> onFlorianAppClick()
                         else       -> println("Clic sur l'application de $prenom")
                     }
                 },

@@ -66,6 +66,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.compose.foundation.layout)
     implementation(libs.androidx.runtime)
+    implementation(libs.androidx.compose.remote.creation.core)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -86,6 +87,7 @@ dependencies {
     implementation("androidx.camera:camera-camera2:1.3.0")
     implementation("androidx.camera:camera-lifecycle:1.3.0")
     implementation("androidx.camera:camera-view:1.3.0")
+    implementation("com.google.accompanist:accompanist-permissions:0.34.0")
 
     //Room
     val room_version = "2.8.4"
