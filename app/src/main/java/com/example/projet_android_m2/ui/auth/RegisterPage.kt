@@ -12,9 +12,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.example.projet_android_m2.data.KtorServer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -141,4 +143,9 @@ fun RegisterPage(navController: NavController) {
             }
         }
     }
+}
+@Preview(showBackground = true)
+@Composable
+fun TestRegisterPage() {
+    RegisterPage(navController = rememberNavController())
 }
