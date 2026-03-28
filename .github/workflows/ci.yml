@@ -1,0 +1,55 @@
+name: Android CI
+
+on:
+  push:
+    branches: [ "master", "dev" ]
+  pull_request:
+    branches: [ "master", "dev" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout du code
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. Setup Java 17 et Cache Gradle auto 
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle 
+
+      # 3. Permissions gradlew
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      # 4. Crée un JSONL vide car le vrai est trop lourd, test rapide
+      - name: Create placeholder JSON asset
+        run: |
+          mkdir -p app/src/main/assets
+          if [ ! -f app/src/main/assets/people-places.jsonl ]; then
+            touch app/src/main/assets/people-places.jsonl
+            echo "JSON placeholder créé pour le CI"
+          fi
+
+      # 5. Lance les tests unitaires (ceux de base)
+      - name: Run Unit Tests
+        run: ./gradlew test
+
+      # 6. Vérifie que tout compile et génère l'APK
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug
+
+      # 7. Upload l'APK en artifact téléchargeable 7 jours
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: fapecargo-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
