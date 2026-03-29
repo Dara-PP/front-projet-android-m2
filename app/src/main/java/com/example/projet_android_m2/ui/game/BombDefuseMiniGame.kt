@@ -11,10 +11,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlin.math.*
 import kotlin.random.Random
@@ -24,14 +25,17 @@ fun BombDefuseMiniGame(
     onGameFinished: (Int) -> Unit
 ) {
     val context = LocalContext.current
+    val density = LocalDensity.current
+
     val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
     val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
 
     val screenWidth = context.resources.displayMetrics.widthPixels.toFloat()
+    val screenHeight = context.resources.displayMetrics.heightPixels.toFloat()
 
     var playerX by remember { mutableStateOf(screenWidth / 2) }
-    val playerY = 1500f
+    val playerY = screenHeight * 0.75f
 
     var bombs by remember { mutableStateOf(listOf<Bomb>()) }
     var explosions by remember { mutableStateOf(listOf<Explosion>()) }
@@ -101,7 +105,7 @@ fun BombDefuseMiniGame(
 
                 bombs = bombs.map { it.copy(y = it.y + it.speed) }
 
-                if (Random.nextFloat() < 0.1f) {
+                if (Random.nextFloat() < 0.07f) {
                     val newX = Random.nextInt(0, screenWidth.toInt()).toFloat()
                     bombs = bombs + Bomb(x = newX, y = 0f)
                 }
@@ -118,7 +122,7 @@ fun BombDefuseMiniGame(
                     }
                 }
 
-                if (survivalTime >= 20f) {
+                if (survivalTime >= 15f) {
                     phase = 2
                     bombs = emptyList()
                 }
@@ -158,45 +162,47 @@ fun BombDefuseMiniGame(
                 Column {
                     Text(
                         text = if (phase == 1)
-                            "💣 Survis 20s (${20 - survivalTime.toInt()}s)"
+                            "Survis 15s (${15 - survivalTime.toInt()}s)"
                         else
-                            "📱 Stable 10s (${10 - stableTime.toInt()}s)",
+                            "Stable 10s (${10 - stableTime.toInt()}s)",
                         modifier = Modifier.padding(16.dp)
                     )
 
-                    Canvas(Modifier.fillMaxSize()) {
+                    Box(modifier = Modifier.fillMaxSize()) {
 
-                        drawContext.canvas.nativeCanvas.drawText(
-                            "😎",
-                            playerX,
-                            playerY,
-                            android.graphics.Paint().apply {
-                                textSize = 80f
-                                textAlign = android.graphics.Paint.Align.CENTER
+                        Canvas(modifier = Modifier.fillMaxSize()) {
+                            bombs.forEach {
+                                drawCircle(Color.Red, it.radius, Offset(it.x, it.y))
                             }
+
+                            explosions.forEach {
+                                drawCircle(
+                                    Color.Yellow.copy(alpha = 0.5f),
+                                    it.radius,
+                                    Offset(it.x, it.y)
+                                )
+                            }
+                        }
+
+                        //  joueur FIX
+                        val playerXDp = with(density) { playerX.toDp() }
+                        val playerYDp = with(density) { playerY.toDp() }
+
+                        Text(
+                            text = "😎",
+                            fontSize = 40.sp,
+                            modifier = Modifier.offset(x = playerXDp, y = playerYDp)
                         )
-
-                        bombs.forEach {
-                            drawCircle(Color.Red, it.radius, Offset(it.x, it.y))
-                        }
-
-                        explosions.forEach {
-                            drawCircle(
-                                Color.Yellow.copy(alpha = 0.5f),
-                                it.radius,
-                                Offset(it.x, it.y)
-                            )
-                        }
                     }
                 }
             }
 
             GameState.LOSE -> {
-                EndScreen("💀 BOOM !", Color.Red, { startGame() }, { onGameFinished(0) })
+                EndScreen(" BOOM !", Color.Red, { startGame() }, { onGameFinished(0) })
             }
 
             GameState.WIN -> {
-                EndScreen("🎉 Désamorcé !", Color.Green, { startGame() }, { onGameFinished(1) })
+                EndScreen(" Désamorcé !", Color.Green, { startGame() }, { onGameFinished(1) })
             }
         }
     }
@@ -205,35 +211,20 @@ fun BombDefuseMiniGame(
 @Composable
 fun IntroScreen(onStart: () -> Unit) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Transparent),
+        modifier = Modifier.fillMaxSize().background(Color.Transparent),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            "💣 Bomb Defuse",
-            color = Color.Black,
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold
-        )
+        Text("💣 Bomb Defuse", style = MaterialTheme.typography.headlineLarge)
 
         Spacer(Modifier.height(20.dp))
 
         Text(
-            "🎮 Instructions :\n\n" +
-                    "• Incline ton téléphone pour bouger \n\n" +
-                    "• Évite les bombes pendant 15 secondes \n\n" +
-                    "• Ensuite, reste IMMOBILE 10 secondes \n" ,
-
-            color = Color.Magenta,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
+            "• Incline ton téléphone pour bouger\n\n" +
+                    "• Évite les bombes pendant 15 secondes\n\n" +
+                    "• Puis reste immobile 10 secondes",
             modifier = Modifier.padding(20.dp)
-
         )
-
-        Spacer(Modifier.height(30.dp))
 
         Button(onClick = onStart) {
             Text("▶️ START")
@@ -249,16 +240,12 @@ fun EndScreen(
     onExit: () -> Unit
 ) {
     Column(
-        Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.8f)),
+        Modifier.fillMaxSize().background(Color.Black.copy(0.8f)),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(title, color = color)
-
         Spacer(Modifier.height(20.dp))
-
         Button(onClick = onRetry) { Text("🔄 Rejouer") }
         Spacer(Modifier.height(10.dp))
         Button(onClick = onExit) { Text("🏠 Menu") }
