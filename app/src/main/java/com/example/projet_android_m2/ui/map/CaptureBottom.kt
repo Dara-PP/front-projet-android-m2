@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,14 +42,16 @@ fun CaptureBottom(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = sheetState
+        sheetState = sheetState,
+        containerColor = Color(0xFFF0F4F8)
     ) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
 
             Text(
                 text = "Cartes à portée",
                 fontSize = 20.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF2C3E50) // Bleu nuit
             )
             Text(
                 text = "${capturable.size} carte(s) capturable(s)",
@@ -73,7 +76,8 @@ fun CaptureBottom(
                                 onDismiss()
                             }
                         )
-                        HorizontalDivider()
+                        // Ligne de séparation discrète
+                        HorizontalDivider(color = Color(0xFFE2E8F0))
                     }
                 }
             }
@@ -90,26 +94,36 @@ fun CaptureCardItem(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 10.dp)
+            .padding(vertical = 12.dp)
     ) {
-        Text(text = card.person_name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Text(
+            text = card.person_name,
+            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp,
+            color = Color(0xFF2C3E50) // Bleu nuit
+        )
         Text(
             text = "%.0f m".format(card.distance_km * 1000),
             fontSize = 14.sp,
             color = Color.DarkGray
         )
         Text(
-            text = "Power : ${card.power}",
+            text = "Puissance : ${card.power}",
             fontSize = 12.sp,
             color = Color.Gray
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Bouton stylisé harmonisé
         Button(
             onClick = onCaptureClick,
-            colors = ButtonDefaults.buttonColors(containerColor = Color.Blue),
-            modifier = Modifier.fillMaxWidth()
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF27AE60)), // Vert
+            shape = RoundedCornerShape(50),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(44.dp)
         ) {
-            Text("Attraper !", color = Color.White)
+            Text("ATTRAPER !", color = Color.White, fontWeight = FontWeight.Bold)
         }
     }
 }
