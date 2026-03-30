@@ -35,7 +35,7 @@ fun RegisterPage(navController: NavController) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF2C3E50)), // Même bleu nuit que le Login
+            .background(Color(0xFFF0F4F8)), // Même bleu nuit que le Login
         contentAlignment = Alignment.Center
     ) {
         // 3. La carte centrale
@@ -55,7 +55,7 @@ fun RegisterPage(navController: NavController) {
             ) {
                 // Titre
                 Text(
-                    text = "Nouveau Collectionneur",
+                    text = "Nouveau Joueur",
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF2C3E50)
@@ -67,7 +67,7 @@ fun RegisterPage(navController: NavController) {
                 OutlinedTextField(
                     value = idInput,
                     onValueChange = { idInput = it },
-                    label = { Text("Nom du collectionneur") },
+                    label = { Text("Nom du joueur") },
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()

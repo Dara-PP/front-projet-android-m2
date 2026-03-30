@@ -34,16 +34,16 @@ fun LoginPage(navController: NavController) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF2C3E50)),
+            .background(Color(0xFFF0F4F8)),
         contentAlignment = Alignment.Center
     ) {
 
-        // 2. On met le formulaire dans une Card
+        // 2. Le formulaire dans une Card
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(24.dp), // Marge sur les côtés
-            shape = RoundedCornerShape(16.dp), // Bords arrondis
+            shape = RoundedCornerShape(16.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp) // Petite ombre
         ) {
 
@@ -59,7 +59,7 @@ fun LoginPage(navController: NavController) {
                     text = "CONNEXION",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF2C3E50)
+                    color = Color(0xFF2C3E50) // Le texte reste foncé pour bien se lire !
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -68,7 +68,7 @@ fun LoginPage(navController: NavController) {
                 OutlinedTextField(
                     value = idInput,
                     onValueChange = { idInput = it },
-                    label = { Text("Nom du collectionneur") },
+                    label = { Text("Nom du joueur") },
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp), // Arrondit le champ de texte
                     modifier = Modifier.fillMaxWidth()
@@ -82,7 +82,7 @@ fun LoginPage(navController: NavController) {
                     onValueChange = { passwordInput = it },
                     label = { Text("Mot de passe") },
                     singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(), // Cache le texte (points noirs)
+                    visualTransformation = PasswordVisualTransformation(),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -110,16 +110,16 @@ fun LoginPage(navController: NavController) {
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(50.dp), // On le rend plus cliquable
+                        .height(50.dp),
                     shape = RoundedCornerShape(50), // 50 = forme de "pilule"
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF27AE60)) // Vert sympa
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF27AE60))
                 ) {
                     Text("JOUER", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Bouton secondaire (texte seulement)
+                // Bouton secondaire
                 TextButton(onClick = { navController.navigate("register") }) {
                     Text("Pas de compte ? S'inscrire", color = Color.Gray)
                 }
@@ -127,9 +127,9 @@ fun LoginPage(navController: NavController) {
         }
     }
 }
+
 @Preview(showBackground = true)
 @Composable
 fun TestLoginPage() {
-    // rememberNavController() simule la navigation juste pour l'aperçu
     LoginPage(navController = rememberNavController())
 }
