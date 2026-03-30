@@ -28,11 +28,11 @@ import androidx.compose.ui.unit.sp
 import com.example.projet_android_m2.data.KtorServer
 import com.example.projet_android_m2.data.NearCard
 import com.example.projet_android_m2.data.PlaceRepository
-import com.example.projet_android_m2.data.db.PlaceCard
-import com.example.projet_android_m2.data.getCardsNear
+import com.example.projet_android_m2.data.db.UserCardEntity
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.rememberCameraState
@@ -47,19 +47,18 @@ import org.maplibre.spatialk.geojson.Position
 
 private const val RANGE_KM = 5.0
 
-//Convertit une PlaceCard locale en NearCard pour l'affichage sur la carte.
-fun PlaceCard.toNearCard(userLat: Double, userLon: Double): NearCard {
-    val dLat = locationRandomLat - userLat
-    val dLon = locationRandomLon - userLon
+// Convertit une UserCardEntity (cache API) en NearCard pour l'affichage sur la carte.
+fun UserCardEntity.toNearCard(userLat: Double, userLon: Double): NearCard {
+    val dLat = lat - userLat
+    val dLon = lon - userLon
     val distKm = sqrt(dLat * dLat + dLon * dLon) * 111.0
     return NearCard(
-        id = id.toString(),
-        wikidata_id = personId.toString(),
-        person_name = personNameFr ?: personNameEn ?: "Inconnu",
-        lat = locationRandomLat,
-        lon = locationRandomLon,
-        // TODO API BACKEND CALCUL DE SCORE POWER
-        power = (personId % 100).toInt().coerceIn(1, 99), // temporaire, à remplacer par vraie stat plus tard position carte
+        id = id,
+        wikidata_id = "",
+        person_name = person_name,
+        lat = lat,
+        lon = lon,
+        power = power.toInt(),
         distance_km = distKm
     )
 }
@@ -94,37 +93,30 @@ fun OpenStreetMap() {
     var cardToCapture by remember { mutableStateOf<NearCard?>(null) }
     var currentGame by remember { mutableStateOf(pickRandomGame()) }
 
-    // Fonction de rafraîchissement
-    // Room locale toujours dispo, API en complément
+    // Appelle GET /api/cards/available, met en cache Room, puis affiche les marqueurs.
+    // Si le résultat est vide (offline + cache vide), conserve les cartes déjà affichées.
     suspend fun refreshCards(lat: Double, lon: Double) {
         if (lat == -1.0 || lon == -1.0) return
         isLoading = true
         try {
-            // Room locale (PlaceCard --> NearCard)
-            val localCards = repo.getPlaceCardsAroundGps(lat, lon)
-            val localAsNearCards = localCards.map { it.toNearCard(lat, lon) }
-            Log.d("CARDS", "${localAsNearCards.size} cartes locales Room trouvées")
-
-            // API backend (si disponible)
-            var apiCards = emptyList<NearCard>()
-            try {
-                apiCards = server.getCardsNear(context, lat, lon, RANGE_KM)
-                Log.d("CARDS", "${apiCards.size} cartes API reçues")
-            } catch (e: Exception) {
-                Log.w("CARDS", "API indisponible, mode local uniquement : ${e.message}")
+            val entities = repo.fetchAndSaveAvailableCards(lat, lon, RANGE_KM)
+            if (entities.isNotEmpty()) {
+                cards = entities.map { it.toNearCard(lat, lon) }
             }
-
-            // Fusion de locales + API par ID
-            val localIds = localAsNearCards.map { it.id }.toSet()
-            val apiOnly = apiCards.filter { it.id !in localIds }
-            cards = localAsNearCards + apiOnly
-
-            Log.d("CARDS", "Total affiché : ${cards.size} (${localAsNearCards.size} local + ${apiOnly.size} API)")
+            Log.d("CARDS", "Total affiché : ${cards.size} cartes")
         } catch (e: Exception) {
             Log.e("CARDS", "Erreur chargement cartes : ${e.message}")
             Toast.makeText(context, "Erreur chargement des cartes", Toast.LENGTH_SHORT).show()
         } finally {
             isLoading = false
+        }
+    }
+
+    // Charge le cache Room immédiatement au démarrage (offline ou avant que la localisation arrive)
+    LaunchedEffect(Unit) {
+        val cached = repo.userCardDao.getAll().first()
+        if (cached.isNotEmpty()) {
+            cards = cached.map { it.toNearCard(userLat, userLon) }
         }
     }
 
@@ -158,30 +150,23 @@ fun OpenStreetMap() {
 
     // ÉCRAN DE JEU (Si une carte est en cours de capture)
     if (cardToCapture != null) {
+        val frozenCard = cardToCapture
         MiniGameHost(
-            game = pickRandomGame(),
+            game = currentGame, // stable ne change pas à chaque recomposition
             onFinished = { score ->
-                // TODO quand offline pas de capture !
+                Log.d("DEBUG_CLICK", "MiniGame finished with score: $score | card=${frozenCard?.id}")
                 scope.launch {
-                    val card = cardToCapture
-                    if (score >= 1) {
-                        val cardIdLong = card?.id?.toLongOrNull()
-                        if (cardIdLong != null) {
-                            try {
-                                repo.catchCard(cardIdLong, userId)
-                                Log.d("CAPTURE", "Carte $cardIdLong capturée en local pour $userId")
-                            } catch (e: Exception) {
-                                Log.e("CAPTURE", "Erreur Room catchCard : ${e.message}")
-                            }
+                    if (score >= 0 && frozenCard != null) {
+                        Log.d("CAPTURE", "Starting capture process for ${frozenCard.id}")
+                        val captured = repo.captureCard(frozenCard.id)
+                        if (captured) {
+                            Toast.makeText(context, "${frozenCard.person_name} capturée !", Toast.LENGTH_LONG).show()
+                            refreshCards(userLat, userLon)
+                        } else {
+                            Log.e("CAPTURE", "Le serveur a refusé la capture de ${frozenCard.id}")
+                            Toast.makeText(context, "Erreur serveur, capture échouée", Toast.LENGTH_SHORT).show()
                         }
-
-                        // TODO rajouter le POST /catch quand la route existera sur le serveur
-
-                        Toast.makeText(context, "${card?.person_name} capturée !", Toast.LENGTH_LONG).show()
-
-                        // Refresh pour retirer la carte capturée de la map
-                        refreshCards(userLat, userLon)
-                    } else {
+                    } else if (score < 1) {
                         Toast.makeText(context, "Échec de la capture...", Toast.LENGTH_SHORT).show()
                     }
                     cardToCapture = null // Retour à la carte
@@ -291,6 +276,20 @@ fun OpenStreetMap() {
                 currentGame = pickRandomGame()
                 cardToCapture = selectedCard
                 showSheet = false
+            },
+            onInstantCapture = {
+                val card = selectedCard!!
+                showSheet = false
+                scope.launch {
+                    val captured = repo.captureCard(card.id)
+                    if (captured) {
+                        Toast.makeText(context, "${card.person_name} capturée !", Toast.LENGTH_LONG).show()
+                        refreshCards(userLat, userLon)
+                    } else {
+                        Log.e("DEBUG_INSTANT", "Capture refusée par le serveur pour ${card.id}")
+                        Toast.makeText(context, "Erreur serveur, capture échouée", Toast.LENGTH_SHORT).show()
+                    }
+                }
             }
         )
     }

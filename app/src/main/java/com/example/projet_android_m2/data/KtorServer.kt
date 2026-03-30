@@ -37,6 +37,18 @@ data class AuthResponse(
     val message: String
 )
 
+@Serializable
+data class CaptureRequest(val card_id: String)
+
+@Serializable
+data class CardHistoryDto(
+    val card_id: String,
+    val person_name: String? = null,
+    val action: Int = 0,
+    val acquired_at: String? = null
+)
+
+
 class KtorServer {
     // internal : accessible depuis les fichiers d'extension du même module
     //internal val urlServer = "http://10.0.2.2:8080"
@@ -75,7 +87,7 @@ class KtorServer {
     // TODO Check le server 404 server erreur register marche pas
     suspend fun register(context: Context, username: String, mdp: String, email: String): String? {
         return try {
-            val response: HttpResponse = client.post("$urlServer/users") {
+            val response: HttpResponse = client.post("$urlServer/register") {
                 contentType(ContentType.Application.Json)
                 setBody(RegisterUser(username = username, password = mdp, email = email))
             }
@@ -136,6 +148,42 @@ class KtorServer {
     fun logout(context: Context) {
         val sharedPref = context.getSharedPreferences("AuthLog", Context.MODE_PRIVATE)
         sharedPref.edit().clear().apply()
+    }
+
+    suspend fun captureCard(context: Context, cardId: String): Boolean {
+        return try {
+            val token = getToken(context) ?: run {
+                return false
+            }
+            val url = "$urlServer/api/cards/capture"
+            val requestBody = CaptureRequest(card_id = cardId)
+            val response: HttpResponse = client.post(url) {
+                header("Authorization", "Bearer $token")
+                contentType(ContentType.Application.Json)
+                setBody(requestBody)
+            }
+            response.status == io.ktor.http.HttpStatusCode.OK
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    suspend fun getCardHistory(context: Context): List<CardHistoryDto> {
+        return try {
+            val token = getToken(context) ?: run {
+                return emptyList()
+            }
+            val response: HttpResponse = client.get("$urlServer/api/cards/history") {
+                header("Authorization", "Bearer $token")
+            }
+            if (response.status.value == 200) {
+                response.body<List<CardHistoryDto>>()
+            } else {
+                emptyList()
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 
     suspend fun getPantheon(context: Context): List<PantheonPlayerResponse> {
